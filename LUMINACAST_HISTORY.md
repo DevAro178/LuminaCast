@@ -62,14 +62,20 @@ If modifying the codebase, **do not undo these fixes**:
 ### Improvement 3: Caption Chunking with Pop/Fade Transitions
 - **`caption_generator.py`**: Complete rewrite. Added `_chunk_sentence(text, max_words=5)` that splits narration into 3-6 word phrases with natural break detection (commas, semicolons). Each chunk gets its own ASS dialogue event with pop-in scale animation (`\fscx80\fscy80\t(0,80,\fscx100\fscy100)`) and fade transitions (`\fad(120,80)`). Timing is word-count weighted with cumulative drift correction. Also pre-applied Montserrat font and wider outlines (4px) in ASS headers.
 
+### Improvement 4: Premium Font + Dependency & Shutdown Scripts
+- **`caption_generator.py`**: ASS headers already updated in Improvement 3 to use Montserrat ExtraBold (60pt long / 68pt short), 4px outline, 2px shadow.
+- **`setup_dependencies.sh`** [NEW]: Checks/installs ffmpeg, `fonts-montserrat`, Python venv, and pip packages. Called by `start_all.sh` automatically.
+- **`shutdown_all.sh`** [NEW]: Kills all LuminaCast screen sessions (`monitor`, `ollama`, `sd`, `kokoro`, `web`).
+- **`start_all.sh`**: Now calls `setup_dependencies.sh` before starting services. Aborts if dependency check fails.
+
 ## 6. Current State & Next Steps
-**Status**: Pipeline fully functional. Improvements 1-3 complete.
+**Status**: Pipeline fully functional. Improvements 1-4 complete.
 
 **Remaining Improvements**:
 1. ~~Smarter Script Prompts~~ ✅
 2. ~~Toned-Down Visuals~~ ✅
 3. ~~Caption Chunking + Transitions~~ ✅
-4. **Premium Font (Montserrat ExtraBold)** — plus `setup_dependencies.sh` and `shutdown_all.sh`
+4. ~~Premium Font + Dependency Scripts~~ ✅
 5. **Background Music** — lo-fi tracks at ~15-20% volume (low priority, user provides files)
 
 ---

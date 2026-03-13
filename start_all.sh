@@ -6,6 +6,15 @@
 APP_DIR="$HOME/LuminaCast"
 SD_DIR="$HOME/easy-diffusion"
 
+# Run dependency check before starting services
+echo "Running dependency check..."
+bash "$APP_DIR/setup_dependencies.sh"
+if [ $? -ne 0 ]; then
+    echo "❌ Dependency check failed. Fix the issues above and try again."
+    exit 1
+fi
+echo ""
+
 # 1. Start System Monitor (htop/top)
 echo "Starting monitor screen..."
 screen -dmS monitor top
