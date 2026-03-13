@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LuminaCast | Video Generator</title>
+    <meta name="description" content="Automated YouTube video generation powered by AI">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./index.css">
+    <link rel="icon" type="image/png" href="./favicon.png">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <div class="logo">
+                <span class="logo-icon">✦</span>
+                <span class="logo-text">LuminaCast</span>
+            </div>
+            <span class="version-badge">v0.1</span>
+        </div>
+        <div class="header-right">
+            <div class="status-indicator">
+                <span class="status-dot"></span>
+                <span class="status-label">Systems Online</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Generate Section -->
+        <section class="generate-section" id="generate-section">
+            <div class="section-header">
+                <h1 class="section-title">Generate Video</h1>
+                <p class="section-subtitle">Enter a topic and let AI create your next viral video</p>
+            </div>
+
+            <form id="generate-form" class="generate-form">
+                <div class="form-group">
+                    <label for="topic-input" class="form-label">Topic / Title</label>
+                    <textarea
+                        id="topic-input"
+                        class="form-input topic-input"
+                        placeholder="e.g. 5 Signs of High Emotional Intelligence"
+                        rows="2"
+                        required
+                        minlength="3"
+                        maxlength="500"
+                    ></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Video Type</label>
+                        <div class="toggle-group" id="video-type-toggle">
+                            <button type="button" class="toggle-btn active" data-value="short">
+                                <span class="toggle-icon">⚡</span>
+                                <span>Short</span>
+                                <span class="toggle-detail">30-60s</span>
+                            </button>
+                            <button type="button" class="toggle-btn" data-value="long">
+                                <span class="toggle-icon">🎬</span>
+                                <span>Long</span>
+                                <span class="toggle-detail">5-10 min</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Voice</label>
+                        <div class="toggle-group" id="voice-type-toggle">
+                            <button type="button" class="toggle-btn active" data-value="female">
+                                <span class="toggle-icon">♀</span>
+                                <span>Female</span>
+                            </button>
+                            <button type="button" class="toggle-btn" data-value="male">
+                                <span class="toggle-icon">♂</span>
+                                <span>Male</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-generate" id="btn-generate">
+                    <span class="btn-icon">▶</span>
+                    <span class="btn-text">Generate Video</span>
+                </button>
+            </form>
+        </section>
+
+        <!-- Jobs Section -->
+        <section class="jobs-section" id="jobs-section">
+            <div class="section-header">
+                <h2 class="section-title">Your Videos</h2>
+                <button class="btn-refresh" id="btn-refresh" title="Refresh">↻</button>
+            </div>
+
+            <div class="jobs-list" id="jobs-list">
+                <div class="empty-state" id="empty-state">
+                    <div class="empty-icon">🎥</div>
+                    <p class="empty-text">No videos generated yet</p>
+                    <p class="empty-hint">Enter a topic above to get started</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Video Preview Modal -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal" id="video-modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">Video Preview</h3>
+                <button class="modal-close" id="modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <video id="video-player" controls class="video-player">
+                    Your browser does not support video playback.
+                </video>
+            </div>
+            <div class="modal-footer">
+                <a id="download-link" class="btn-download" href="#" download>
+                    <span>⬇</span> Download MP4
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="./app.js"></script>
+</body>
+</html>
