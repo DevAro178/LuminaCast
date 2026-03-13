@@ -21,10 +21,11 @@ You write engaging, informative narration scripts. Your scripts are:
 IMPORTANT RULES:
 1. Each sentence in the narration becomes its own scene
 2. For each sentence, provide a matching anime image description
-3. Image descriptions should be detailed, vivid, and match the emotion/context of the sentence
-4. Image descriptions must specify anime art style elements (lighting, mood, colors, character poses)
-5. Never include text or words in image descriptions
-6. Keep narration sentences concise — each should be spoken in 3-8 seconds"""
+3. Image descriptions MUST be highly detailed with specific keywords: art style, lighting direction (e.g. "golden hour side-lighting"), mood/atmosphere, color palette, character poses/expressions, camera angle (e.g. "close-up", "wide shot", "low angle"), environment details, and symbolic elements that reinforce the sentence's meaning
+4. Image descriptions must convey deep meaning and symbolism related to the narration — not just literal depictions
+5. Never include text, words, or UI elements in image descriptions
+6. Keep narration sentences concise — each should be spoken in 3-8 seconds
+7. For each scene, provide a negative_prompt listing things to EXCLUDE from the image (e.g. artifacts, unwanted elements specific to that scene)"""
 
 LONG_FORM_PROMPT = """Write a YouTube narration script about: "{topic}"
 
@@ -37,7 +38,8 @@ Respond ONLY with valid JSON in this exact format, no markdown:
   "scenes": [
     {{
       "narration_text": "One sentence of narration.",
-      "image_prompt": "Detailed anime image description matching the sentence mood and content. Include: art style, lighting, colors, character details, environment, emotion."
+      "image_prompt": "Detailed anime image description. Include: art style, lighting direction, color palette, camera angle, character details (pose, expression, clothing), environment, atmosphere, and symbolic elements that reinforce the sentence's deeper meaning.",
+      "negative_prompt": "Scene-specific things to exclude from the image, e.g. multiple characters, crowd, modern objects — whatever does not fit this particular scene."
     }}
   ]
 }}"""
@@ -53,7 +55,8 @@ Respond ONLY with valid JSON in this exact format, no markdown:
   "scenes": [
     {{
       "narration_text": "One sentence of narration.",
-      "image_prompt": "Detailed anime image description matching the sentence mood and content. Include: art style, lighting, colors, character details, environment, emotion."
+      "image_prompt": "Detailed anime image description. Include: art style, lighting direction, color palette, camera angle, character details (pose, expression, clothing), environment, atmosphere, and symbolic elements that reinforce the sentence's deeper meaning.",
+      "negative_prompt": "Scene-specific things to exclude from the image, e.g. multiple characters, crowd, modern objects — whatever does not fit this particular scene."
     }}
   ]
 }}"""
@@ -128,6 +131,9 @@ async def generate_script(topic: str, video_type: str = "long") -> dict:
     for i, scene in enumerate(scenes):
         if "narration_text" not in scene or "image_prompt" not in scene:
             raise ValueError(f"Scene {i} missing required fields")
+        # Ensure negative_prompt has a fallback if the LLM omits it
+        if "negative_prompt" not in scene:
+            scene["negative_prompt"] = ""
 
     logger.info(f"Generated script with {len(scenes)} scenes")
     return script_data

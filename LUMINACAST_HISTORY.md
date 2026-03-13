@@ -33,7 +33,7 @@
   - All services run on the same machine for lower latency and simpler management.
   - Uses `GNU Screen` for persistent background sessions.
   - `start_all.sh` orchestrates the boot of: Ollama, Easy Diffusion, Kokoro TTS, and the FastAPI Backend.
-## 3. Recently Solved Issues & Design Choices
+## 4. Recently Solved Issues & Design Choices
 If modifying the codebase, **do not undo these fixes**:
 
 - **Easy Diffusion Image Format Bug**: The pipeline was failing because we requested PNGs but the web UI default (and API return) was JPEG. 
@@ -48,14 +48,22 @@ If modifying the codebase, **do not undo these fixes**:
   *Fix*: Added `db.mark_stuck_jobs_as_failed()` to the `lifespan` startup event in `main.py` to automatically clear out zombies.
 - **Rebranding**: Renamed the entire project natively from "spinning-photon" to "LuminaCast" on 03/13/2026.
 
-## 4. Current State & Next Steps
-**Status**: The pipeline is fully functional end-to-end. It successfully completes the database jobs and generates synchronized MP4 files with audio, captions, and images.
+## 5. Improvement Log (03/13/2026+)
 
-**Upcoming/Planned Improvements to Tackle Next**:
-1. **Visual Style Tuning**: Adjusting Easy Diffusion prompts/negative prompts to ensure a more consistent anime aesthetic and stop weird artifacts.
-2. **Caption Aesthetics**: Upgrading the generated `.ass` subtitle files to have flashier animations or word-tracking colors.
-3. **Video Pacing**: Tweaking the Ken Burns effects, crossfade durations, or perhaps adding background lo-fi music.
-4. **Script Polish**: Fine-tuning the Ollama Mistral prompt to write punchier TikTok hooks and better pacing.
+### Improvement 1: Smarter Script Prompts + Per-Scene Negative Prompts
+- **`config.py`**: Replaced generic negative prompt with proven animagine-xl-4.0 defaults: `lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry`.
+- **`script_generator.py`**: Updated system prompt to instruct Mistral to generate richer `image_prompt` values (lighting direction, camera angles, symbolism, composition) and a `negative_prompt` per scene. Updated JSON schema in both long/short form prompts. Added graceful fallback if LLM omits `negative_prompt`.
+- **`image_generator.py`**: `generate_image()` now accepts a `negative_prompt` parameter, merges it with global defaults, and passes the combined value to Easy Diffusion. `generate_images_for_scenes()` passes `scene["negative_prompt"]` through.
+
+## 6. Current State & Next Steps
+**Status**: Pipeline fully functional. Improvement 1 complete.
+
+**Remaining Improvements**:
+1. ~~Smarter Script Prompts~~ ✅
+2. **Toned-Down Visuals** — reduce vibrancy (without going too dark/dull), deepen symbolism
+3. **Caption Chunking + Transitions** — break sentences into 3-6 word chunks with pop/fade effects
+4. **Premium Font (Montserrat ExtraBold)** — plus `setup_dependencies.sh` and `shutdown_all.sh`
+5. **Background Music** — lo-fi tracks at ~15-20% volume (low priority, user provides files)
 
 ---
 *End of Context Document*

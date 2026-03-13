@@ -22,6 +22,7 @@ async def generate_image(
     prompt: str,
     output_path: str | Path,
     video_type: str = "long",
+    negative_prompt: str = "",
     session_id: str = "spinning-photon",
 ) -> str:
     """
@@ -48,11 +49,17 @@ async def generate_image(
     # Build the full prompt with anime style prefix
     full_prompt = f"{ANIME_STYLE_PREFIX}{prompt}"
 
+    # Merge scene-level negative prompt with global defaults
+    merged_negative = SD_DEFAULT_PARAMS.get("negative_prompt", "")
+    if negative_prompt:
+        merged_negative = f"{merged_negative}, {negative_prompt}"
+
     # Build request payload matching Easy Diffusion's expected format
     payload = {
         **SD_DEFAULT_PARAMS,
         "prompt": full_prompt,
         "original_prompt": full_prompt,
+        "negative_prompt": merged_negative,
         "width": width,
         "height": height,
         "session_id": session_id,
@@ -183,6 +190,7 @@ async def generate_images_for_scenes(
                 prompt=scene["image_prompt"],
                 output_path=image_path,
                 video_type=video_type,
+                negative_prompt=scene.get("negative_prompt", ""),
             )
             image_paths.append(path)
         except Exception as e:
