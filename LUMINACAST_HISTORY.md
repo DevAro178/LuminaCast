@@ -59,13 +59,16 @@ If modifying the codebase, **do not undo these fixes**:
 - **`image_generator.py`**: Replaced `ANIME_STYLE_PREFIX` — removed "vibrant colors" and "high quality", added "masterpiece, best quality, cinematic lighting, warm color palette, atmospheric, meaningful composition". Balanced to avoid overly dark/dull output.
 - **`config.py`**: Appended "oversaturated, neon colors, overly bright, garish" to global negative prompt.
 
+### Improvement 3: Caption Chunking with Pop/Fade Transitions
+- **`caption_generator.py`**: Complete rewrite. Added `_chunk_sentence(text, max_words=5)` that splits narration into 3-6 word phrases with natural break detection (commas, semicolons). Each chunk gets its own ASS dialogue event with pop-in scale animation (`\fscx80\fscy80\t(0,80,\fscx100\fscy100)`) and fade transitions (`\fad(120,80)`). Timing is word-count weighted with cumulative drift correction. Also pre-applied Montserrat font and wider outlines (4px) in ASS headers.
+
 ## 6. Current State & Next Steps
-**Status**: Pipeline fully functional. Improvements 1-2 complete.
+**Status**: Pipeline fully functional. Improvements 1-3 complete.
 
 **Remaining Improvements**:
 1. ~~Smarter Script Prompts~~ ✅
 2. ~~Toned-Down Visuals~~ ✅
-3. **Caption Chunking + Transitions** — break sentences into 3-6 word chunks with pop/fade effects
+3. ~~Caption Chunking + Transitions~~ ✅
 4. **Premium Font (Montserrat ExtraBold)** — plus `setup_dependencies.sh` and `shutdown_all.sh`
 5. **Background Music** — lo-fi tracks at ~15-20% volume (low priority, user provides files)
 
