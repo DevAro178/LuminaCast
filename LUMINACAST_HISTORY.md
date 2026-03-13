@@ -55,12 +55,16 @@ If modifying the codebase, **do not undo these fixes**:
 - **`script_generator.py`**: Updated system prompt to instruct Mistral to generate richer `image_prompt` values (lighting direction, camera angles, symbolism, composition) and a `negative_prompt` per scene. Updated JSON schema in both long/short form prompts. Added graceful fallback if LLM omits `negative_prompt`.
 - **`image_generator.py`**: `generate_image()` now accepts a `negative_prompt` parameter, merges it with global defaults, and passes the combined value to Easy Diffusion. `generate_images_for_scenes()` passes `scene["negative_prompt"]` through.
 
+### Improvement 2: Toned-Down, Cinematic Visuals
+- **`image_generator.py`**: Replaced `ANIME_STYLE_PREFIX` — removed "vibrant colors" and "high quality", added "masterpiece, best quality, cinematic lighting, warm color palette, atmospheric, meaningful composition". Balanced to avoid overly dark/dull output.
+- **`config.py`**: Appended "oversaturated, neon colors, overly bright, garish" to global negative prompt.
+
 ## 6. Current State & Next Steps
-**Status**: Pipeline fully functional. Improvement 1 complete.
+**Status**: Pipeline fully functional. Improvements 1-2 complete.
 
 **Remaining Improvements**:
 1. ~~Smarter Script Prompts~~ ✅
-2. **Toned-Down Visuals** — reduce vibrancy (without going too dark/dull), deepen symbolism
+2. ~~Toned-Down Visuals~~ ✅
 3. **Caption Chunking + Transitions** — break sentences into 3-6 word chunks with pop/fade effects
 4. **Premium Font (Montserrat ExtraBold)** — plus `setup_dependencies.sh` and `shutdown_all.sh`
 5. **Background Music** — lo-fi tracks at ~15-20% volume (low priority, user provides files)

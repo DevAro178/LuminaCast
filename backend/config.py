@@ -30,7 +30,7 @@ VIDEO_SHORT_RESOLUTION = (1080, 1920)  # 9:16
 SD_DEFAULT_PARAMS = {
     "seed": 42,
     "used_random_seed": True,
-    "negative_prompt": "lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry",
+    "negative_prompt": "lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry, oversaturated, neon colors, overly bright, garish",
     "num_outputs": 1,
     "num_inference_steps": 40,
     "guidance_scale": 7.5,
