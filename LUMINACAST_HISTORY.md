@@ -24,6 +24,15 @@
   - `start_all.sh`: (AWS Specific) Bash script that boots 5 detached `screen` sessions to run Top, Ollama, Easy Diffusion, Kokoro, and LuminaCast simultaneously.
 - **Paths & Config**: All API keys and local URLs are stored in `backend/config.py`. 
 
+## 3. Deployment & Development Workflow
+- **Development**: Local machine (Windows) for coding and logic changes. 
+- **Testing/Deployment**: Remote AWS EC2 instance (Ubuntu).
+  - Code is synced via `git pull origin main` on the remote server.
+  - Services are restarted to apply changes.
+- **Infrastructure**: Single-instance "Monolithic" setup.
+  - All services run on the same machine for lower latency and simpler management.
+  - Uses `GNU Screen` for persistent background sessions.
+  - `start_all.sh` orchestrates the boot of: Ollama, Easy Diffusion, Kokoro TTS, and the FastAPI Backend.
 ## 3. Recently Solved Issues & Design Choices
 If modifying the codebase, **do not undo these fixes**:
 
