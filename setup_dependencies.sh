@@ -7,6 +7,24 @@ set -e
 
 echo "🔍 LuminaCast — Checking dependencies..."
 
+# --- Initial System Checks ---
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    echo "🐧 Linux detected. Checking for core system packages..."
+    sudo apt-get update -qq
+    
+    # Ensure python3-venv is installed (often missing on minimal Ubuntu)
+    if ! dpkg -l "python3-venv" &>/dev/null; then
+        echo "📦 Installing python3-venv..."
+        sudo apt-get install -y python3-venv
+    fi
+
+    # Ensure sqlite3 is installed
+    if ! command -v sqlite3 &>/dev/null; then
+        echo "📦 Installing sqlite3..."
+        sudo apt-get install -y sqlite3
+    fi
+fi
+
 # --- System Packages ---
 install_if_missing() {
     local pkg="$1"

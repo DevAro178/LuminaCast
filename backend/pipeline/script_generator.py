@@ -21,8 +21,9 @@ You write engaging, informative narration scripts. Your scripts are:
 IMPORTANT RULES:
 1. Each sentence in the narration becomes its own scene
 2. For each sentence, provide a matching anime image description
-3. Image descriptions MUST be highly detailed with specific keywords: art style, lighting direction (e.g. "golden hour side-lighting"), mood/atmosphere, color palette, character poses/expressions, camera angle (e.g. "close-up", "wide shot", "low angle"), environment details, and symbolic elements that reinforce the sentence's meaning
-4. Image descriptions must convey deep meaning and symbolism related to the narration — not just literal depictions
+3. Image descriptions MUST be written as a comma-separated list of tags/keywords (Danbooru style), NOT full sentences. Include: character details, outfit, pose, expression, background, lighting tags, and quality tags.
+   - Example: "1boy, vash the stampede, trigun stampede, red jacket, sunglasses, gun, hand on own hip, aiming, standing, looking at viewer, upper body, desert, cliff, cowboy shot"
+4. Image descriptions must convey deep meaning and symbolism through specific visual tags that reinforce the sentence's meaning.
 5. Never include text, words, or UI elements in image descriptions
 6. Keep narration sentences concise — each should be spoken in 3-8 seconds
 7. For each scene, provide a negative_prompt listing things to EXCLUDE from the image (e.g. artifacts, unwanted elements specific to that scene)"""
@@ -38,7 +39,7 @@ Respond ONLY with valid JSON in this exact format, no markdown:
   "scenes": [
     {{
       "narration_text": "One sentence of narration.",
-      "image_prompt": "Detailed anime image description. Include: art style, lighting direction, color palette, camera angle, character details (pose, expression, clothing), environment, atmosphere, and symbolic elements that reinforce the sentence's deeper meaning.",
+      "image_prompt": "Comma-separated visual tags (Danbooru style). Include: character details, outfit, pose, expression, background, lighting, and symbolic visual elements.",
       "negative_prompt": "Scene-specific things to exclude from the image, e.g. multiple characters, crowd, modern objects — whatever does not fit this particular scene."
     }}
   ]
@@ -55,7 +56,7 @@ Respond ONLY with valid JSON in this exact format, no markdown:
   "scenes": [
     {{
       "narration_text": "One sentence of narration.",
-      "image_prompt": "Detailed anime image description. Include: art style, lighting direction, color palette, camera angle, character details (pose, expression, clothing), environment, atmosphere, and symbolic elements that reinforce the sentence's deeper meaning.",
+      "image_prompt": "Comma-separated visual tags (Danbooru style). Include: character details, outfit, pose, expression, background, lighting, and symbolic visual elements.",
       "negative_prompt": "Scene-specific things to exclude from the image, e.g. multiple characters, crowd, modern objects — whatever does not fit this particular scene."
     }}
   ]

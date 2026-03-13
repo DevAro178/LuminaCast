@@ -33,6 +33,9 @@
   - All services run on the same machine for lower latency and simpler management.
   - Uses `GNU Screen` for persistent background sessions.
   - `start_all.sh` orchestrates the boot of: Ollama, Easy Diffusion, Kokoro TTS, and the FastAPI Backend.
+- **Workflow Policy**:
+  - **Feature Brunching**: Always develop new features or significant improvements on a separate `feature/` branch (e.g., `feature/audio-visual-enhancements`). Merge to `main` only after stability and manual verification.
+  - **Context Maintenance**: Update `LUMINACAST_HISTORY.md` at every major milestone to ensure context for future agents.
 ## 4. Recently Solved Issues & Design Choices
 If modifying the codebase, **do not undo these fixes**:
 
@@ -51,9 +54,9 @@ If modifying the codebase, **do not undo these fixes**:
 ## 5. Improvement Log (03/13/2026+)
 
 ### Improvement 1: Smarter Script Prompts + Per-Scene Negative Prompts
-- **`config.py`**: Replaced generic negative prompt with proven animagine-xl-4.0 defaults: `lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry`.
-- **`script_generator.py`**: Updated system prompt to instruct Mistral to generate richer `image_prompt` values (lighting direction, camera angles, symbolism, composition) and a `negative_prompt` per scene. Updated JSON schema in both long/short form prompts. Added graceful fallback if LLM omits `negative_prompt`.
-- **`image_generator.py`**: `generate_image()` now accepts a `negative_prompt` parameter, merges it with global defaults, and passes the combined value to Easy Diffusion. `generate_images_for_scenes()` passes `scene["negative_prompt"]` through.
+- **`config.py`**: Replaced generic negative prompt with proven animagine-xl-4.0 defaults.
+- **`script_generator.py`**: Updated prompts to include `negative_prompt` and enforce **Danbooru-style comma-separated tags** for `image_prompt`. This format is optimized for `animagine-xl-4.0`.
+- **`image_generator.py`**: Now merges scene-level negative prompts with global defaults.
 
 ### Improvement 2: Toned-Down, Cinematic Visuals
 - **`image_generator.py`**: Replaced `ANIME_STYLE_PREFIX` — removed "vibrant colors" and "high quality", added "masterpiece, best quality, cinematic lighting, warm color palette, atmospheric, meaningful composition". Balanced to avoid overly dark/dull output.
@@ -68,15 +71,19 @@ If modifying the codebase, **do not undo these fixes**:
 - **`shutdown_all.sh`** [NEW]: Kills all LuminaCast screen sessions (`monitor`, `ollama`, `sd`, `kokoro`, `web`).
 - **`start_all.sh`**: Now calls `setup_dependencies.sh` before starting services. Aborts if dependency check fails.
 
+### Refinement: Dependency Script + Branch Policy
+- **`setup_dependencies.sh`**: Enhanced with `python3-venv` and `sqlite3` checks to cover base system requirements.
+- **Workflow**: Adopted separate branching for feature development (`feature/audio-visual-enhancements`).
+
 ## 6. Current State & Next Steps
-**Status**: Pipeline fully functional. Improvements 1-4 complete.
+**Status**: Pipeline functional. Improvement 1-4 complete. Prompt refinement to tag-based style complete. Currently working on `feature/audio-visual-enhancements` branch.
 
 **Remaining Improvements**:
-1. ~~Smarter Script Prompts~~ ✅
+1. ~~Smarter Script Prompts~~ (Refined to tag-style) ✅
 2. ~~Toned-Down Visuals~~ ✅
 3. ~~Caption Chunking + Transitions~~ ✅
 4. ~~Premium Font + Dependency Scripts~~ ✅
-5. **Background Music** — lo-fi tracks at ~15-20% volume (low priority, user provides files)
+5. **Background Music** — awaiting user files in `backend/assets/music/`
 
 ---
 *End of Context Document*
