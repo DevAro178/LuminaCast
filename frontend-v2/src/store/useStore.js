@@ -68,14 +68,29 @@ const useStore = create((set, get) => ({
         const job = await jobsApi.getJobStatus(jobId);
         set({ status: job.status, progress: job.progress_pct });
 
-        if (job.status === 'script_review' || job.status === 'visual_review' || job.status === 'completed' || job.status === 'error') {
-          clearInterval(pollInterval);
-          set({ isGenerating: false });
-          
-          if (job.status === 'script_review') {
-            const scenes = await jobsApi.getScenes(jobId);
-            set({ scriptScenes: scenes, advancedStep: 'script' });
+        // Dynamic State Transitions
+        if (job.status === 'script_review') {
+          const scenes = await jobsApi.getScenes(jobId);
+          set({ scriptScenes: scenes, advancedStep: 'script', isGenerating: false });
+          clearInterval(pollInterval); // Stop polling until user approves script
+        } 
+        else if (job.status === 'generating_images' || job.status === 'visual_review') {
+          set({ advancedStep: 'visuals' });
+          if (job.status === 'visual_review') {
+            set({ isGenerating: false });
+            clearInterval(pollInterval); // Stop polling until user approves visuals
           }
+        }
+        else if (job.status === 'assembling' || job.status === 'completed') {
+          set({ advancedStep: 'assemble' });
+          if (job.status === 'completed') {
+            set({ isGenerating: false });
+            clearInterval(pollInterval);
+          }
+        }
+        else if (job.status === 'error' || job.status === 'failed') {
+          set({ isGenerating: false });
+          clearInterval(pollInterval);
         }
       } catch (error) {
         console.error("Polling error:", error);

@@ -59,6 +59,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Serve generated assets (frames, final videos)
+app.mount("/api/v2/assets/jobs", StaticFiles(directory=JOBS_DIR), name="jobs_assets")
+
 
 # --- Request/Response Models ---
 
