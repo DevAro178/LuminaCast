@@ -42,7 +42,7 @@ async def generate_speech(
             json={
                 "text": text,
                 "voice": voice_id,
-                "speed": 0.75,
+                "speed": 0.81,  # Balanced speed (0.75 was too slow, 0.85/1.0 too fast)
                 "response_format": "wav",
             }
         )
