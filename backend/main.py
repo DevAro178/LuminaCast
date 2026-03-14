@@ -11,6 +11,7 @@ from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from fastapi.middleware.cors import CORSMiddleware
 
 import database as db
 from config import JOBS_DIR
@@ -48,6 +49,14 @@ app = FastAPI(
     description="YouTube Video Automation SaaS",
     version="0.1.0",
     lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
