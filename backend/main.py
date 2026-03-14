@@ -192,16 +192,22 @@ async def update_job_scenes(job_id: str, request: ScenesUpdateRequest):
     await db.update_job(job_id, approved_script=True)
     return {"status": "success"}
 
-@app.post("/api/v2/jobs/{job_id}/generate_visuals")
-async def start_visual_generation(job_id: str, background_tasks: BackgroundTasks):
-    """Triggers Stable Diffusion generation for the approved scenes."""
+class ReviseScriptRequest(BaseModel):
+    feedback: str | None = ""
+    scenes: list[dict] | None = None
+
+@app.post("/api/v2/jobs/{job_id}/revise_script")
+async def revise_job_script_endpoint(job_id: str, request: ReviseScriptRequest, background_tasks: BackgroundTasks):
+    """Triggers the LLM to revise the script based on feedback or edits."""
     job = await db.get_job(job_id)
     if not job:
         raise HTTPException(404, "Job not found")
         
-    background_tasks.add_task(generate_job_visuals, job_id)
-    return {"status": "generating_images"}
-    
+    # We'll need a new function in orchestrator
+    from pipeline.orchestrator import revise_job_script
+    background_tasks.add_task(revise_job_script, job_id, job["topic"], request.feedback, request.scenes)
+    return {"status": "revising_script"}
+
 @app.post("/api/v2/jobs/{job_id}/assemble")
 async def assemble_final_video(job_id: str, background_tasks: BackgroundTasks):
     """Triggers TTS, Captions, and MoviePy assembly."""

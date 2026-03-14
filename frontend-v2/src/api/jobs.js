@@ -62,6 +62,19 @@ export const jobsApi = {
     return response.data;
   },
 
+  // AI Revision
+  reviseScript: async (jobId, feedback = "", scenes = []) => {
+    const response = await api.post(`/api/v2/jobs/${jobId}/revise_script`, {
+      feedback,
+      scenes: scenes.map(s => ({
+        scene_index: s.scene_index,
+        narration_text: s.edited_text || s.narration_text,
+        image_prompt: s.edited_tags || s.image_prompt,
+      })),
+    });
+    return response.data;
+  },
+
   // List all jobs
   listJobs: async () => {
     const response = await api.get('/api/jobs');

@@ -48,7 +48,8 @@ const useStore = create((set, get) => ({
     const { topicInput, videoType, voiceType, mode } = get();
     if (!topicInput) return;
 
-    set({ isGenerating: true, progress: 0, status: 'queued' });
+    // Set generating BEFORE calling API to prevent flicker
+    set({ isGenerating: true, progress: 0, status: 'queued', advancedStep: 'input' });
 
     try {
       const { job_id } = await jobsApi.createJob(topicInput, videoType, voiceType, mode);
@@ -61,12 +62,24 @@ const useStore = create((set, get) => ({
         get().startPolling(job_id);
       } else {
         // Basic mode: redirect to jobs page immediately
-        set({ isGenerating: false });
-        set({ activeTab: 'jobs' });
+        set({ isGenerating: false, activeTab: 'jobs' });
       }
     } catch (error) {
       console.error("Failed to start job:", error);
-      set({ isGenerating: false });
+      set({ isGenerating: false, status: 'idle' });
+    }
+  },
+
+  reviseScript: async (feedback = "") => {
+    const { currentJobId, scriptScenes, topicInput } = get();
+    set({ isGenerating: true, status: 'revising_script' });
+    
+    try {
+      await jobsApi.reviseScript(currentJobId, feedback, scriptScenes);
+      get().startPolling(currentJobId);
+    } catch (error) {
+      console.error("Failed to revise script:", error);
+      set({ isGenerating: false, status: 'idle' });
     }
   },
 

@@ -198,3 +198,30 @@ async def run_legacy_pipeline(job_id: str, topic: str, video_type: str, voice_ty
         await assemble_job_video(job_id)
     except:
         pass # Logging and error updating is handled by child functions
+
+async def revise_job_script(job_id: str, topic: str, feedback: str = "", current_scenes: list = None):
+    """Orchestrates script revision."""
+    try:
+        await db.update_job(job_id, status="Revising Script...", progress_pct=10)
+        
+        from pipeline.script_generator import revise_script
+        script_data = await revise_script(topic, feedback, current_scenes)
+        
+        scenes = script_data["scenes"]
+        
+        # Clear old scenes
+        await db.delete_scenes_for_job(job_id)
+        
+        # Create new scenes
+        await db.create_scenes(job_id, scenes)
+        
+        await db.update_job(
+            job_id, 
+            status="script_review", 
+            progress_pct=15, 
+            total_scenes=len(scenes)
+        )
+        logger.info(f"[{job_id}] Script revised: {len(scenes)} scenes")
+    except Exception as e:
+        logger.error(f"[{job_id}] Revision failed: {e}")
+        await db.update_job(job_id, status="error", error_message=str(e))

@@ -160,3 +160,10 @@ async def update_scene(scene_id: str, **kwargs):
             f"UPDATE scenes SET {set_clause} WHERE id = ?", values
         )
         await db.commit()
+
+
+async def delete_scenes_for_job(job_id: str):
+    """Delete all scenes associated with a job."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("DELETE FROM scenes WHERE job_id = ?", (job_id,))
+        await db.commit()

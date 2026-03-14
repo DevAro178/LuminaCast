@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import useStore from '../../store/useStore';
+import { jobsApi } from '../../api/jobs';
 import Button from '../ui/Button';
 import Select from '../ui/Select';
 import Loader from '../ui/Loader';
@@ -10,7 +11,22 @@ import AssemblyView from './AssemblyView';
 export default function ContentGrid() {
   const mode = useStore(state => state.mode);
   const advancedStep = useStore(state => state.advancedStep);
+  const setActiveTab = useStore(state => state.setActiveTab);
   
+  const [recentJobs, setRecentJobs] = useState([]);
+
+  useEffect(() => {
+    const fetchRecent = async () => {
+      try {
+        const data = await jobsApi.listJobs();
+        setRecentJobs(data.filter(j => j.status === 'completed').slice(0, 5));
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchRecent();
+  }, []);
+
   const videoType = useStore(state => state.videoType);
   const setVideoType = useStore(state => state.setVideoType);
   const voiceType = useStore(state => state.voiceType);
@@ -27,10 +43,28 @@ export default function ContentGrid() {
       {/* Dynamic Content based on Advanced Step */}
       {mode === 'basic' || advancedStep === 'input' ? (
         <>
-          <div className="col-span-1 bento-card flex flex-col">
-            <h3 className="text-sm font-bold tracking-widest text-textSecondary mb-4">RECENT VIDEOS</h3>
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-textSecondary/50 text-sm">No recent videos found.</p>
+          <div className="col-span-1 bento-card flex flex-col group hover:border-accent/20 transition-all">
+            <h3 className="text-sm font-bold tracking-widest text-textSecondary uppercase mb-6 flex justify-between items-center">
+               RECENT VIDEOS
+               <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+            </h3>
+            <div className="flex-1 space-y-3">
+              {recentJobs.length === 0 ? (
+                <div className="h-full flex items-center justify-center opacity-30">
+                  <p className="text-xs font-bold uppercase tracking-widest">No recent videos</p>
+                </div>
+              ) : recentJobs.map(job => (
+                <div 
+                  key={job.id} 
+                  onClick={() => {
+                    useStore.setState({ activeTab: 'library', currentJobId: job.id });
+                  }}
+                  className="p-4 rounded-3xl bg-surface/5 hover:bg-accent/10 hover:translate-x-1 transition-all cursor-pointer border border-white/5"
+                >
+                  <p className="text-[10px] font-black text-accent mb-1 uppercase tracking-tighter">{job.video_type}</p>
+                  <h4 className="text-sm font-black text-white truncate uppercase tracking-tighter leading-none">{job.topic}</h4>
+                </div>
+              ))}
             </div>
           </div>
           

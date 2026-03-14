@@ -138,3 +138,76 @@ async def generate_script(topic: str, video_type: str = "long") -> dict:
 
     logger.info(f"Generated script with {len(scenes)} scenes")
     return script_data
+
+
+REVISION_PROMPT = """You are refining an existing video script based on user feedback.
+
+Original Topic: "{topic}"
+Current Script Content:
+{current_scenes}
+
+User Feedback: "{feedback}"
+
+TASK:
+1. Review the current scenes and the user feedback.
+2. Revise the narrations or image descriptions to better align with the feedback.
+3. If narrations were changed by the user, ensure the new image descriptions or narrations maintain flow.
+4. If no specific feedback was provided but a revision was requested, improve the overall quality and depth.
+
+Respond ONLY with valid JSON in the exact same format as before:
+{{
+  "title": "Revised Video Title",
+  "scenes": [
+    {{
+      "narration_text": "...",
+      "image_prompt": "...",
+      "negative_prompt": "..."
+    }}
+  ]
+}}"""
+
+
+async def revise_script(topic: str, feedback: str = "", current_scenes: list = None) -> dict:
+    """
+    Refine an existing script based on user feedback.
+    """
+    scenes_summary = ""
+    if current_scenes:
+        for i, s in enumerate(current_scenes):
+            scenes_summary += f"Scene {i+1}: {s.get('narration_text', '')}\n"
+            
+    user_prompt = REVISION_PROMPT.format(
+        topic=topic,
+        current_scenes=scenes_summary,
+        feedback=feedback or "Make it better."
+    )
+
+    logger.info(f"Revising script for topic: {topic}")
+
+    async with httpx.AsyncClient(timeout=300.0) as client:
+        response = await client.post(
+            f"{OLLAMA_URL}/api/generate",
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": user_prompt,
+                "system": SYSTEM_PROMPT,
+                "stream": False,
+                "options": {
+                    "temperature": 0.5, # Lower temperature for better stickiness to previous content
+                    "num_predict": 8192,
+                }
+            }
+        )
+        response.raise_for_status()
+        result = response.json()
+
+    raw_text = result.get("response", "")
+    cleaned = _clean_json_response(raw_text)
+
+    try:
+        script_data = json.loads(cleaned)
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse revised script JSON: {e}")
+        raise ValueError(f"LLM returned invalid JSON for revision: {e}")
+
+    return script_data

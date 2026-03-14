@@ -7,19 +7,31 @@ export default function ScriptReview() {
   const updateSceneText = useStore(state => state.updateSceneText);
   const updateSceneTags = useStore(state => state.updateSceneTags);
   const saveScriptEdits = useStore(state => state.saveScriptEdits);
+  const reviseScript = useStore(state => state.reviseScript);
   const isGenerating = useStore(state => state.isGenerating);
+  const status = useStore(state => state.status);
+
+  const handleAiRevision = () => {
+    const feedback = prompt("What would you like to improve about the script? (Leave blank for general improvement)");
+    reviseScript(feedback);
+  };
 
   return (
-    <div className="col-span-3 bento-card animate-in slide-in-from-right-8 duration-500">
+    <div className="col-span-3 bento-card animate-in slide-in-from-right-8 duration-500 relative">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-2xl font-black">SCRIPT REVIEW</h3>
+        <h3 className="text-2xl font-black italic tracking-tighter">SCRIPT REVIEW</h3>
         <div className="flex gap-4">
-          <Button variant="outline" className="px-6 py-2 text-sm">
-            AI REVISION
+          <Button 
+            variant="outline" 
+            className="px-6 py-2 text-xs font-black tracking-widest uppercase hover:bg-accent/10 transition-colors"
+            onClick={handleAiRevision}
+            disabled={isGenerating}
+          >
+            {status === 'revising_script' ? "REVISING..." : "AI REVISION"}
           </Button>
           <Button 
             variant="accent" 
-            className="px-6 py-2 text-sm"
+            className="px-6 py-2 text-xs font-black tracking-widest uppercase shadow-[0_0_20px_-5px_rgba(255,107,0,0.4)]"
             onClick={saveScriptEdits}
             disabled={isGenerating}
           >
@@ -27,31 +39,34 @@ export default function ScriptReview() {
           </Button>
         </div>
       </div>
-      <div className="space-y-4">
+      <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
         {scriptScenes.map((scene, index) => (
-          <div key={index} className="p-4 bg-background rounded-2xl flex gap-6">
-            <div className="w-12 h-12 rounded-full bg-surface/10 flex items-center justify-center font-bold flex-shrink-0">
+          <div key={index} className="p-6 bg-surface/5 rounded-[2rem] flex gap-8 border border-white/5 hover:border-accent/20 transition-all group">
+            <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center font-black text-accent flex-shrink-0 border border-accent/20">
               {index + 1}
             </div>
-            <div className="flex-1 space-y-3">
+            <div className="flex-1 space-y-6">
               <div>
-                <label className="text-xs font-bold text-textSecondary uppercase mb-1 block">Narration</label>
+                <label className="text-[10px] font-black text-textSecondary uppercase mb-2 block tracking-widest opacity-50">Narration</label>
                 <textarea 
                   value={scene.edited_text || scene.narration_text}
                   onChange={(e) => updateSceneText(index, e.target.value)}
-                  className="w-full bg-surface/5 rounded-xl p-3 text-sm outline-none focus:bg-surface/10 border border-transparent focus:border-accent/50 resize-none h-20 leading-relaxed disabled:opacity-50"
+                  className="w-full bg-white/5 rounded-2xl p-4 text-sm outline-none focus:bg-white/10 border border-transparent focus:border-accent/30 resize-none h-24 leading-relaxed font-medium transition-all"
                   disabled={isGenerating}
                 />
               </div>
-              <div>
-                <label className="text-xs font-bold text-accent uppercase mb-1 block">Visual Tags</label>
-                <input 
-                  type="text"
-                  value={scene.edited_tags || scene.image_prompt}
-                  onChange={(e) => updateSceneTags(index, e.target.value)}
-                  className="w-full bg-accent/10 text-accent rounded-xl p-3 text-sm outline-none focus:bg-accent/20 border border-transparent focus:border-accent/50 font-mono disabled:opacity-50"
-                  disabled={isGenerating}
-                />
+              <div className="relative group-hover:translate-x-1 transition-transform">
+                <label className="text-[10px] font-black text-accent uppercase mb-2 block tracking-widest">Visual Tags (SDXL)</label>
+                <div className="relative">
+                  <input 
+                    type="text"
+                    value={scene.edited_tags || scene.image_prompt}
+                    onChange={(e) => updateSceneTags(index, e.target.value)}
+                    className="w-full bg-accent/20 text-accent rounded-2xl p-5 text-sm outline-none border border-accent/30 focus:border-accent focus:bg-accent/30 font-mono font-bold shadow-inner-accent transition-all"
+                    disabled={isGenerating}
+                  />
+                  <div className="absolute top-1/2 right-4 -translate-y-1/2 w-2 h-2 rounded-full bg-accent animate-pulse opacity-50" />
+                </div>
               </div>
             </div>
           </div>
