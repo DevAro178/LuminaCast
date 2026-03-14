@@ -95,9 +95,12 @@ def assemble_video(
             logger.warning(f"Scene {i} has zero duration, skipping")
             continue
 
+        # Add a 0.5s pause after the audio ends, before the next scene starts
+        SCENE_PAUSE = 0.5
+
         # Create image clip
-        # FIX: Add CROSSFADE_DURATION to visual length so overlapping doesn't desync the audio
-        visual_duration = duration + (CROSSFADE_DURATION if CROSSFADE_DURATION > 0 else 0)
+        # FIX: Add CROSSFADE_DURATION to visual length so overlapping doesn't desync the pipeline
+        visual_duration = duration + SCENE_PAUSE + (CROSSFADE_DURATION if CROSSFADE_DURATION > 0 else 0)
         
         img_clip = (
             ImageClip(img_path)
@@ -117,7 +120,7 @@ def assemble_video(
         except Exception as e:
             logger.warning(f"Could not load audio for scene {i}: {e}")
 
-        cumulative_time += duration
+        cumulative_time += duration + SCENE_PAUSE
 
     if not scene_clips:
         raise ValueError("No valid scene clips to assemble")

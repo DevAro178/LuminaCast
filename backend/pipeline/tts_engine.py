@@ -42,7 +42,7 @@ async def generate_speech(
             json={
                 "text": text,
                 "voice": voice_id,
-                "speed": 0.85,
+                "speed": 0.75,
                 "response_format": "wav",
             }
         )
@@ -66,9 +66,6 @@ async def generate_speech(
             output_path.write_bytes(response.content)
             timestamps = []
             duration = _get_wav_duration(output_path)
-
-    # Add a natural pause (0.6s) to the end of the clip for better pacing
-    duration += 0.6
 
     logger.info(f"Saved audio ({duration:.1f}s) to {output_path}")
     return {

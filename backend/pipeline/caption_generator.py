@@ -147,11 +147,19 @@ def generate_captions_from_timestamps(
         if total_words == 0:
             total_words = len(chunks)
 
-        for chunk in chunks:
+        # 0.5s pause after the audio finishes before the next scene starts
+        SCENE_PAUSE = 0.5
+
+        for j, chunk in enumerate(chunks):
             word_count = len(chunk.split())
             chunk_duration = (word_count / total_words) * duration
             # Ensure minimum duration of 0.4s for readability
             chunk_duration = max(0.4, chunk_duration)
+
+            # If this is the last chunk of the sentence, keep it on screen 
+            # during the scene's trailing silence (SCENE_PAUSE).
+            if j == len(chunks) - 1:
+                chunk_duration += SCENE_PAUSE
 
             start_str = _format_ass_time(cumulative_time)
             end_time = cumulative_time + chunk_duration
@@ -167,8 +175,8 @@ def generate_captions_from_timestamps(
 
             cumulative_time = end_time
 
-        # Sync cumulative time with actual TTS duration to prevent drift
-        expected_end = sum(t["duration"] for t in tts_results[:i+1])
+        # Sync cumulative time with actual TTS duration + pause to prevent drift
+        expected_end = sum(t["duration"] + SCENE_PAUSE for t in tts_results[:i+1])
         cumulative_time = expected_end
 
     ass_content = header + "\n".join(events) + "\n"
