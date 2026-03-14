@@ -96,10 +96,13 @@ def assemble_video(
             continue
 
         # Create image clip
+        # FIX: Add CROSSFADE_DURATION to visual length so overlapping doesn't desync the audio
+        visual_duration = duration + (CROSSFADE_DURATION if CROSSFADE_DURATION > 0 else 0)
+        
         img_clip = (
             ImageClip(img_path)
             .resized((target_w, target_h))
-            .with_duration(duration)
+            .with_duration(visual_duration)
         )
 
         # Apply Ken Burns effect

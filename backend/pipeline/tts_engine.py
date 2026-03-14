@@ -67,6 +67,9 @@ async def generate_speech(
             timestamps = []
             duration = _get_wav_duration(output_path)
 
+    # Add a natural pause (0.6s) to the end of the clip for better pacing
+    duration += 0.6
+
     logger.info(f"Saved audio ({duration:.1f}s) to {output_path}")
     return {
         "audio_path": str(output_path),
