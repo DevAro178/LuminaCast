@@ -25,6 +25,14 @@ const useStore = create((set, get) => ({
   topicInput: '',
   setTopicInput: (val) => set({ topicInput: val }),
 
+  searchQuery: '',
+  setSearchQuery: (query) => {
+    set({ searchQuery: query });
+    if (query && get().activeTab !== 'jobs') {
+      set({ activeTab: 'jobs' });
+    }
+  },
+
   // Job Tracking State
   currentJobId: null,
   isGenerating: false,
@@ -40,7 +48,7 @@ const useStore = create((set, get) => ({
     const { topicInput, videoType, voiceType, mode } = get();
     if (!topicInput) return;
 
-    set({ isGenerating: true, progress: 0 });
+    set({ isGenerating: true, progress: 0, status: 'queued' });
 
     try {
       const { job_id } = await jobsApi.createJob(topicInput, videoType, voiceType, mode);
@@ -71,14 +79,20 @@ const useStore = create((set, get) => ({
         // Dynamic State Transitions
         if (job.status === 'script_review') {
           const scenes = await jobsApi.getScenes(jobId);
-          set({ scriptScenes: scenes, advancedStep: 'script', isGenerating: false });
-          clearInterval(pollInterval); // Stop polling until user approves script
+          // Wait to hidden loader until scenes are loaded to prevent flash
+          set({ 
+            scriptScenes: scenes, 
+            advancedStep: 'script', 
+            isGenerating: false,
+            status: 'idle'
+          });
+          clearInterval(pollInterval);
         } 
         else if (job.status === 'generating_images' || job.status === 'visual_review') {
           set({ advancedStep: 'visuals' });
           if (job.status === 'visual_review') {
             set({ isGenerating: false });
-            clearInterval(pollInterval); // Stop polling until user approves visuals
+            clearInterval(pollInterval); 
           }
         }
         else if (job.status === 'assembling' || job.status === 'completed') {

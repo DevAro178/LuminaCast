@@ -9,6 +9,7 @@ import Topbar from './components/layout/Topbar';
 import MainHero from './components/create/MainHero';
 import ContentGrid from './components/create/ContentGrid';
 import JobsDashboard from './components/jobs/JobsDashboard';
+import MediaLibrary from './components/library/MediaLibrary';
 
 function App() {
   const activeTab = useStore(state => state.activeTab);
@@ -32,9 +33,7 @@ function App() {
         )}
         
         {activeTab === 'library' && (
-          <div className="bento-card h-[600px] flex items-center justify-center animate-in fade-in duration-300">
-            <h2 className="text-2xl font-bold text-textSecondary">Media Library coming soon</h2>
-          </div>
+          <MediaLibrary />
         )}
       </main>
     </div>

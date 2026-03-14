@@ -41,10 +41,14 @@ async def generate_job_script(job_id: str, topic: str, video_type: str) -> dict:
         await db.create_scenes(job_id, scenes)
         await db.update_job(
             job_id,
-            status="script_review" if "advanced" else "generating_images",
+            status=f"Drafted {len(scenes)} scenes" if "advanced" else "generating_images",
             progress_pct=15,
             total_scenes=len(scenes),
         )
+        # Force the transition status to 'script_review' if in advanced mode
+        if "advanced":
+            await db.update_job(job_id, status="script_review")
+            
         logger.info(f"[{job_id}] Script generated: {len(scenes)} scenes")
         return script_data
         
@@ -77,7 +81,12 @@ async def generate_job_visuals(job_id: str):
 
         async def on_image_progress(completed, total):
             pct = 15 + int((completed / total) * 35)  # 15% → 50%
-            await db.update_job(job_id, progress_pct=pct, completed_scenes=completed)
+            await db.update_job(
+                job_id, 
+                progress_pct=pct, 
+                completed_scenes=completed,
+                status=f"AI Visuals: {completed}/{total}"
+            )
 
         image_paths = await generate_images_for_scenes(
             scenes, job_dir, video_type, on_progress=on_image_progress
@@ -121,7 +130,11 @@ async def assemble_job_video(job_id: str):
 
         async def on_tts_progress(completed, total):
             pct = 50 + int((completed / total) * 25)  # 50% → 75%
-            await db.update_job(job_id, progress_pct=pct)
+            await db.update_job(
+                job_id, 
+                progress_pct=pct,
+                status=f"Generating Narration: {completed}/{total}"
+            )
 
         tts_results = await generate_speech_for_scenes(
             scenes, job_dir, voice_type, on_progress=on_tts_progress
@@ -136,7 +149,7 @@ async def assemble_job_video(job_id: str):
             )
 
         # ---- Step 3.2: Generate Captions ----
-        await db.update_job(job_id, status="generating_captions", progress_pct=78)
+        await db.update_job(job_id, status="Captions & Graphics...", progress_pct=78)
         logger.info(f"[{job_id}] Step 3.2: Generating captions...")
 
         caption_path = job_dir / "captions.ass"
@@ -145,7 +158,7 @@ async def assemble_job_video(job_id: str):
         )
 
         # ---- Step 3.3: Assemble Video ----
-        await db.update_job(job_id, status="assembling_video", progress_pct=82)
+        await db.update_job(job_id, status="Final Rendering & Mixing...", progress_pct=82)
         logger.info(f"[{job_id}] Step 3.3: Assembling video...")
 
         output_path = job_dir / "output.mp4"
