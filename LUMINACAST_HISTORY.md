@@ -76,14 +76,17 @@ If modifying the codebase, **do not undo these fixes**:
 - **Workflow**: Adopted separate branching for feature development (`feature/audio-visual-enhancements`).
 
 ## 6. Current State & Next Steps
-**Status**: Pipeline functional. Improvement 1-4 complete. Prompt refinement to tag-based style complete. Currently working on `feature/audio-visual-enhancements` branch.
+**Status**: V1 Pipeline is fully functional and refined. Improvements 1-4 are complete. Improvement 5 (Music) is deferred. The `feature/audio-visual-enhancements` branch has been merged into `main`.
 
-**Remaining Improvements**:
+**Remaining Improvements (V1)**:
 1. ~~Smarter Script Prompts~~ (Refined to tag-style) ✅
 2. ~~Toned-Down Visuals~~ ✅
 3. ~~Caption Chunking + Transitions~~ ✅
 4. ~~Premium Font + Dependency Scripts~~ ✅
-5. **Background Music** — awaiting user files in `backend/assets/music/`
+5. ~~Background Music~~ (Deferred to V2)
+
+**Next Major Milestone**:
+Transition to **LuminaCast Version 2** (Interactive Advanced/Basic Pipelines with a React Frontend). See `v2_roadmap.md` in the project artifacts for the complete architecture and flow design.
 
 ---
 *End of Context Document*
