@@ -47,8 +47,16 @@ else
     echo "Error: LuminaCast backend directory not found. Cannot start web server."
 fi
 
+# 6. Start LuminaCast Frontend (React)
+echo "Starting LuminaCast Frontend screen..."
+if [ -d "$APP_DIR/frontend-v2" ]; then
+    screen -dmS frontend bash -c "cd $APP_DIR/frontend-v2 && npm run dev"
+else
+    echo "Error: LuminaCast frontend directory not found. Cannot start frontend server."
+fi
+
 echo ""
-echo "✅ All 5 screen sessions have been started!"
+echo "✅ All 6 screen sessions have been started!"
 echo ""
 echo "To view active screens, run:"
 echo "  screen -ls"

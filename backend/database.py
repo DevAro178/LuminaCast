@@ -21,6 +21,9 @@ async def init_db():
                 progress_pct INTEGER NOT NULL DEFAULT 0,
                 total_scenes INTEGER DEFAULT 0,
                 completed_scenes INTEGER DEFAULT 0,
+                workflow_mode TEXT NOT NULL DEFAULT 'basic',
+                approved_script BOOLEAN NOT NULL DEFAULT 0,
+                approved_visuals BOOLEAN NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL,
                 completed_at TEXT,
                 output_path TEXT,
@@ -34,26 +37,39 @@ async def init_db():
                 scene_index INTEGER NOT NULL,
                 narration_text TEXT NOT NULL,
                 image_prompt TEXT NOT NULL,
+                edited_text TEXT,
+                edited_tags TEXT,
                 image_path TEXT,
                 audio_path TEXT,
                 duration_seconds REAL,
                 FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
             )
         """)
+        # Schema Migration: Add columns to existing tables if they omit them
+        try:
+            await db.execute("ALTER TABLE jobs ADD COLUMN workflow_mode TEXT NOT NULL DEFAULT 'basic'")
+            await db.execute("ALTER TABLE jobs ADD COLUMN approved_script BOOLEAN NOT NULL DEFAULT 0")
+            await db.execute("ALTER TABLE jobs ADD COLUMN approved_visuals BOOLEAN NOT NULL DEFAULT 0")
+            await db.execute("ALTER TABLE scenes ADD COLUMN edited_text TEXT")
+            await db.execute("ALTER TABLE scenes ADD COLUMN edited_tags TEXT")
+        except aiosqlite.OperationalError:
+            # Columns likely already exist
+            pass
+            
         await db.commit()
 
 
 # --- Job Operations ---
 
-async def create_job(topic: str, video_type: str, voice_type: str = "female") -> dict:
+async def create_job(topic: str, video_type: str, voice_type: str = "female", workflow_mode: str = "basic") -> dict:
     """Create a new job and return it."""
     job_id = str(uuid.uuid4())[:8]
     now = datetime.now(timezone.utc).isoformat()
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
-            """INSERT INTO jobs (id, topic, video_type, voice_type, status, progress_pct, created_at)
-               VALUES (?, ?, ?, ?, 'queued', 0, ?)""",
-            (job_id, topic, video_type, voice_type, now)
+            """INSERT INTO jobs (id, topic, video_type, voice_type, workflow_mode, status, progress_pct, created_at)
+               VALUES (?, ?, ?, ?, ?, 'queued', 0, ?)""",
+            (job_id, topic, video_type, voice_type, workflow_mode, now)
         )
         await db.commit()
     return await get_job(job_id)

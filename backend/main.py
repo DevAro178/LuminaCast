@@ -14,7 +14,12 @@ from pydantic import BaseModel, Field
 
 import database as db
 from config import JOBS_DIR
-from pipeline.orchestrator import run_pipeline
+from pipeline.orchestrator import (
+    generate_job_script, 
+    generate_job_visuals, 
+    assemble_job_video,
+    run_legacy_pipeline
+)
 
 # Logging setup
 logging.basicConfig(
@@ -59,20 +64,37 @@ class JobResponse(BaseModel):
     topic: str
     video_type: str
     voice_type: str
+    workflow_mode: str
     status: str
     progress_pct: int
     total_scenes: int | None
     completed_scenes: int | None
+    approved_script: bool
+    approved_visuals: bool
     created_at: str
     completed_at: str | None
     error_message: str | None
 
+class SceneUpdate(BaseModel):
+    scene_index: int
+    edited_text: str
+    edited_tags: str
 
-# --- API Endpoints ---
+class ScenesUpdateRequest(BaseModel):
+    scenes: list[SceneUpdate]
+
+class GenerateV2Request(BaseModel):
+    topic: str = Field(..., min_length=3, max_length=500, description="Video topic or title")
+    video_type: str = Field("short", pattern="^(long|short)$", description="'long' (5-10 min) or 'short' (30-60s)")
+    voice_type: str = Field("female", pattern="^(female|male)$", description="Voice type for narration")
+    workflow_mode: str = Field("advanced", pattern="^(basic|advanced)$")
+
+
+# --- API Endpoints (V1 / Legacy) ---
 
 @app.post("/api/generate", response_model=dict)
 async def start_generation(request: GenerateRequest, background_tasks: BackgroundTasks):
-    """Start a new video generation job."""
+    """Start a new video generation job (V1 monolithic)."""
     job = await db.create_job(
         topic=request.topic,
         video_type=request.video_type,
@@ -81,7 +103,7 @@ async def start_generation(request: GenerateRequest, background_tasks: Backgroun
 
     # Run pipeline in background
     background_tasks.add_task(
-        run_pipeline,
+        run_legacy_pipeline,
         job_id=job["id"],
         topic=request.topic,
         video_type=request.video_type,
@@ -90,6 +112,94 @@ async def start_generation(request: GenerateRequest, background_tasks: Backgroun
 
     logger.info(f"Started job {job['id']}: {request.topic}")
     return {"job_id": job["id"], "status": "queued"}
+
+
+# --- API Endpoints (V2 / Interactive) ---
+
+@app.post("/api/v2/jobs", response_model=dict)
+async def create_job_v2(request: GenerateV2Request, background_tasks: BackgroundTasks):
+    """Initialize a V2 job. Auto-runs if basic mode."""
+    job = await db.create_job(
+        topic=request.topic,
+        video_type=request.video_type,
+        voice_type=request.voice_type,
+        workflow_mode=request.workflow_mode,
+    )
+    
+    if request.workflow_mode == "basic":
+        # Basic mode just runs the legacy fully automated chain in the background
+        background_tasks.add_task(
+            run_legacy_pipeline,
+            job_id=job["id"],
+            topic=request.topic,
+            video_type=request.video_type,
+            voice_type=request.voice_type,
+        )
+    
+    # Advanced mode returns immediately so the UI can sequence it
+    return {"job_id": job["id"], "workflow_mode": job["workflow_mode"], "status": job["status"]}
+
+@app.post("/api/v2/jobs/{job_id}/draft_script")
+async def draft_job_script(job_id: str, background_tasks: BackgroundTasks):
+    """Triggers the LLM script generation phase."""
+    job = await db.get_job(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+        
+    background_tasks.add_task(generate_job_script, job_id, job["topic"], job["video_type"])
+    return {"status": "generating_script"}
+
+@app.get("/api/v2/jobs/{job_id}/scenes", response_model=list[dict])
+async def get_job_scenes(job_id: str):
+    """Fetch all scenes for a specific job."""
+    scenes = await db.get_scenes(job_id)
+    if not scenes:
+        # It's possible script isn't drafted yet
+        return []
+    return scenes
+
+@app.put("/api/v2/jobs/{job_id}/scenes")
+async def update_job_scenes(job_id: str, request: ScenesUpdateRequest):
+    """Saves user edits to the script text or image tags."""
+    job = await db.get_job(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+        
+    db_scenes = await db.get_scenes(job_id)
+    scene_map = {s["scene_index"]: s["id"] for s in db_scenes}
+    
+    for scene_update in request.scenes:
+        if scene_update.scene_index in scene_map:
+            scene_id = scene_map[scene_update.scene_index]
+            await db.update_scene(
+                scene_id, 
+                edited_text=scene_update.edited_text,
+                edited_tags=scene_update.edited_tags
+            )
+            
+    await db.update_job(job_id, approved_script=True)
+    return {"status": "success"}
+
+@app.post("/api/v2/jobs/{job_id}/generate_visuals")
+async def start_visual_generation(job_id: str, background_tasks: BackgroundTasks):
+    """Triggers Stable Diffusion generation for the approved scenes."""
+    job = await db.get_job(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+        
+    background_tasks.add_task(generate_job_visuals, job_id)
+    return {"status": "generating_images"}
+    
+@app.post("/api/v2/jobs/{job_id}/assemble")
+async def assemble_final_video(job_id: str, background_tasks: BackgroundTasks):
+    """Triggers TTS, Captions, and MoviePy assembly."""
+    job = await db.get_job(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+        
+    await db.update_job(job_id, approved_visuals=True)
+    background_tasks.add_task(assemble_job_video, job_id)
+    return {"status": "generating_audio"}
 
 
 @app.get("/api/jobs", response_model=list[dict])
@@ -140,20 +250,6 @@ async def get_job_script(job_id: str):
         raise HTTPException(status_code=404, detail="Script not found")
     import json
     return json.loads(script_path.read_text(encoding="utf-8"))
-
-
-# --- Serve Frontend ---
-
-FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
-if FRONTEND_DIR.exists():
-    @app.get("/")
-    async def serve_dashboard():
-        index_path = FRONTEND_DIR / "index.html"
-        return FileResponse(str(index_path))
-
-    # Mount static files AFTER explicit routes so API routes take priority
-    # Serve at root so relative paths (./index.css, ./app.js) resolve correctly
-    app.mount("/", StaticFiles(directory=str(FRONTEND_DIR)), name="frontend")
 
 
 # --- Entry point ---

@@ -88,5 +88,25 @@ If modifying the codebase, **do not undo these fixes**:
 **Next Major Milestone**:
 Transition to **LuminaCast Version 2** (Interactive Advanced/Basic Pipelines with a React Frontend). See `v2_roadmap.md` in the project artifacts for the complete architecture and flow design.
 
+## 📅 March 14, 2026 - V2 Architectural Refactor & Pure API Transition
+
+### 🚀 Major Milestones
+- **Monolithic React to Modular Refactor**: Decoupled `App.jsx` into standalone components in `src/components/` (Sidebar, Topbar, MainHero, ContentGrid, ScriptReview, VisualReview, AssemblyView, JobsDashboard).
+- **Global State Implementation**: Switched to **Zustand** for state management. Created `src/store/useStore.js` to handle navigation, job status, polling, and interactive pipeline steps.
+- **Pure API Migration**: Removed static file serving from FastAPI. The backend now runs as an API-only service on port 8000, while the frontend is built into `dist/` for production web serving.
+- **Granular Backend Pipeline**: Orchestrator refactored to support user-in-the-loop steps. Script drafting is now a discrete async step callable via `/api/v2/jobs/{id}/draft_script`.
+- **Interactive Script Editing**: Implemented `PUT /api/v2/jobs/{id}/scenes` to persist user-edited narration and image tags.
+
+### 🎨 UI/UX Excellence
+- **Focus Mode**: Added a dynamic Hero transition that minimizes the header into a focus bar during the advanced scripting phase.
+- **Custom Premium Components**: 
+  - `Button.jsx`: Universal action button with variants and loading support.
+  - `Select.jsx`: High-end custom dropdown replacing native OS elements, featuring glassmorphism and smooth animations.
+- **Production Readiness**: Verified with `npm run build`, generating optimized bundles in `frontend-v2/dist`.
+
+### 🛠️ Infrastructure & Scripts
+- **Startup Automation**: Expanded `start_all.sh` to include a 6th screen session for the Vite development server (`npm run dev`).
+- **Axios Integration**: Established `src/api/jobs.js` as the source of truth for all backend communications.
+
 ---
 *End of Context Document*
