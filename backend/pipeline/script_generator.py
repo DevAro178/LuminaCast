@@ -19,35 +19,40 @@ You write engaging, informative narration scripts. Your scripts are:
 - Written for voiceover (natural spoken language, not academic)
 
 IMPORTANT RULES:
-1. Each sentence in the narration becomes its own scene
-2. For each sentence, provide a matching anime image description
-3. Image descriptions MUST be written as a comma-separated list of tags/keywords (Danbooru style), NOT full sentences. Include: character details, outfit, pose, expression, background, lighting tags, and quality tags.
+22. Each sentence in the narration becomes its own scene
+23. For each sentence, provide a matching anime image description
+24. Image descriptions MUST be written as a comma-separated list of tags/keywords (Danbooru style), NOT full sentences. Include: character details, outfit, pose, expression, background, lighting tags, and quality tags.
    - Example: "1boy, vash the stampede, trigun stampede, red jacket, sunglasses, gun, hand on own hip, aiming, standing, looking at viewer, upper body, desert, cliff, cowboy shot"
-4. Image descriptions must convey deep meaning and symbolism through specific visual tags that reinforce the sentence's meaning.
-5. Never include text, words, or UI elements in image descriptions
-6. Keep narration sentences concise — each should be spoken in 3-8 seconds
-7. For each scene, provide a negative_prompt listing things to EXCLUDE from the image (e.g. artifacts, unwanted elements specific to that scene)"""
+25. Image descriptions must convey deep meaning and symbolism through specific visual tags that reinforce the sentence's meaning.
+26. Never include text, words, or UI elements in image descriptions
+27. Keep narration sentences concise — each should be spoken in 3-8 seconds
+28. For each scene, provide a negative_prompt listing things to EXCLUDE from the image (e.g. artifacts, unwanted elements specific to that scene)
+29. Provide a narration_audio field that is a cleanly spelled phonetic version tailored for the TTS engine. DO NOT drag syllables unnecessarily (e.g., use "Eh-ren Yay-ger" rather than "Ehhh-Rennn Yaaay-gr")."""
 
 LONG_FORM_PROMPT = """Write a YouTube narration script about: "{topic}"
 
-Target: Long-form video (5-10 minutes when spoken). Write 40-70 sentences.
-Structure: Hook → Introduction → Main Points (3-5) → Deep Insight → Call to Action
+Target: Long-form video (5-10 minutes when spoken). Write 120-150 sentences.
+Structure: Hook → Introduction → Main Points (Deep Dives & Context) → Reasoned Arguments → Call to Action
+
+CRITICAL VISUAL CONSTRAINT:
+Generate approximately 75-80 distinct visuals maximum. You must map these across your 120-150 narrative scenes by STRATEGICALLY REUSING the exact same image_prompt strings for sequential or highly related points. This prevents the image server from overloading while maintaining a coherent visual narrative.
 
 Respond ONLY with valid JSON in this exact format, no markdown:
 {{
   "title": "Video title",
   "scenes": [
     {{
-      "narration_text": "One sentence of narration.",
-      "image_prompt": "Comma-separated visual tags (Danbooru style). Include: character details, outfit, pose, expression, background, lighting, and symbolic visual elements.",
-      "negative_prompt": "Scene-specific things to exclude from the image, e.g. multiple characters, crowd, modern objects — whatever does not fit this particular scene."
+      "narration_text": "One grammatically correct sentence of narration for the captions.",
+      "narration_audio": "Phonetic spelling of the text for TTS engine (e.g., 'Eh-ren Yay-ger').",
+      "image_prompt": "Comma-separated visual tags (Danbooru style). REUSE these exact strings frequently.",
+      "negative_prompt": "Scene-specific things to exclude from the image."
     }}
   ]
 }}"""
 
 SHORT_FORM_PROMPT = """Write a YouTube Shorts narration script about: "{topic}"
 
-Target: Short-form video (30-60 seconds when spoken). Write 8-15 sentences.
+Target: Short-form video (30-60 seconds when spoken). Write 7-17 sentences.
 Structure: Shocking Hook → Quick Points → Punchline/CTA
 
 Respond ONLY with valid JSON in this exact format, no markdown:
@@ -55,9 +60,10 @@ Respond ONLY with valid JSON in this exact format, no markdown:
   "title": "Video title",
   "scenes": [
     {{
-      "narration_text": "One sentence of narration.",
-      "image_prompt": "Comma-separated visual tags (Danbooru style). Include: character details, outfit, pose, expression, background, lighting, and symbolic visual elements.",
-      "negative_prompt": "Scene-specific things to exclude from the image, e.g. multiple characters, crowd, modern objects — whatever does not fit this particular scene."
+      "narration_text": "One grammatically correct sentence of narration for the captions.",
+      "narration_audio": "Phonetic spelling of the text for TTS engine (e.g., 'Eh-ren').",
+      "image_prompt": "Comma-separated visual tags (Danbooru style).",
+      "negative_prompt": "Scene-specific things to exclude from the image."
     }}
   ]
 }}"""

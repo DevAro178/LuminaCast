@@ -4,13 +4,16 @@ Creates a job, runs the pipeline, and updates DB at each stage.
 """
 import json
 import logging
+import asyncio
+import difflib
+import shutil
 from pathlib import Path
 from datetime import datetime, timezone
 
 import database as db
 from config import JOBS_DIR
 from pipeline.script_generator import generate_script
-from pipeline.image_generator import generate_images_for_scenes
+from pipeline.image_generator import generate_image, _create_fallback_image
 from pipeline.tts_engine import generate_speech_for_scenes
 from pipeline.caption_generator import generate_captions_from_timestamps
 from pipeline.video_assembler import assemble_video
@@ -77,7 +80,7 @@ async def generate_job_visuals(job_id: str):
 
     try:
         await db.update_job(job_id, status="generating_images", progress_pct=15)
-        logger.info(f"[{job_id}] Step 2: Generating {len(scenes)} images...")
+        logger.info(f"[{job_id}] Step 2: Generating {len(scenes)} images (testing against smart pool)...")
 
         async def on_image_progress(completed, total):
             pct = 15 + int((completed / total) * 35)  # 15% → 50%
@@ -88,9 +91,53 @@ async def generate_job_visuals(job_id: str):
                 status=f"AI Visuals: {completed}/{total}"
             )
 
-        image_paths = await generate_images_for_scenes(
-            scenes, job_dir, video_type, on_progress=on_image_progress
-        )
+        images_dir = job_dir / "images"
+        images_dir.mkdir(parents=True, exist_ok=True)
+        
+        image_paths = []
+        total = len(scenes)
+        pool_images = await db.get_all_pool_images()
+
+        for i, (scene, scene_rec) in enumerate(zip(scenes, db_scenes)):
+            image_path = images_dir / f"scene_{i:03d}.jpg"
+            target_prompt = scene["image_prompt"]
+            is_manual_override = bool(scene_rec["edited_tags"])
+            similarity_threshold = 0.95 if is_manual_override else 0.65
+
+            best_match = None
+            best_ratio = 0.0
+            for p_img in pool_images:
+                ratio = difflib.SequenceMatcher(None, target_prompt, p_img["image_tags"]).ratio()
+                if ratio > best_ratio:
+                    best_ratio = ratio
+                    best_match = p_img
+
+            if best_match and best_ratio >= similarity_threshold:
+                logger.info(f"[{job_id}] Scene {i} reused image from pool (similarity: {best_ratio:.2f})")
+                try:
+                    shutil.copy2(best_match["file_path"], image_path)
+                    image_paths.append(str(image_path))
+                except Exception as e:
+                    logger.error(f"Failed to copy pool image: {e}")
+                    best_match = None
+
+            if not best_match or best_ratio < similarity_threshold:
+                try:
+                    path = await generate_image(
+                        prompt=target_prompt,
+                        output_path=image_path,
+                        video_type=video_type,
+                        negative_prompt=scene.get("negative_prompt", ""),
+                    )
+                    image_paths.append(path)
+                    # Add newly generated image to the global pool!
+                    await db.add_to_image_pool(target_prompt, path, job_id)
+                except Exception as e:
+                    logger.error(f"[{job_id}] Failed to generate image for scene {i}: {e}")
+                    path = _create_fallback_image(image_path, video_type)
+                    image_paths.append(path)
+
+            await on_image_progress(i + 1, total)
 
         # Update DB scene records with actual image paths
         for scene_rec, img_path in zip(db_scenes, image_paths):
@@ -119,6 +166,7 @@ async def assemble_job_video(job_id: str):
     for rec in db_scenes:
         scenes.append({
             "narration_text": rec["edited_text"] or rec["narration_text"],
+            "narration_audio": rec["edited_audio"] or rec["narration_audio"] or rec["edited_text"] or rec["narration_text"],
             "image_prompt": rec["edited_tags"] or rec["image_prompt"]
         })
         image_paths.append(rec["image_path"])
@@ -225,7 +273,7 @@ async def revise_job_script(job_id: str, topic: str, feedback: str = "", current
     except Exception as e:
         logger.error(f"[{job_id}] Revision failed: {e}")
         await db.update_job(job_id, status="error", error_message=str(e))
-async def regenerate_single_scene(job_id: str, scene_index: int):
+async def regenerate_single_scene(job_id: str, scene_index: int, custom_tags: str = None):
     """
     Re-generates the image for a single scene without touching others.
     Useful for the Visual Review 'Regenerate' button.
@@ -241,8 +289,11 @@ async def regenerate_single_scene(job_id: str, scene_index: int):
         logger.error(f"[{job_id}] Scene {scene_index} not found for regeneration")
         return
     
-    image_prompt = target_scene["edited_tags"] or target_scene["image_prompt"]
+    image_prompt = custom_tags or target_scene["edited_tags"] or target_scene["image_prompt"]
     negative_prompt = target_scene.get("negative_prompt", "")
+    
+    if custom_tags:
+        await db.update_scene(target_scene["id"], edited_tags=custom_tags)
     
     # Save to the same indexed path so the frontend always uses the same URL
     image_path = job_dir / "images" / f"scene_{scene_index:03d}.jpg"

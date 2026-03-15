@@ -43,8 +43,9 @@ export const jobsApi = {
     const response = await api.put(`/api/v2/jobs/${jobId}/scenes`, {
       scenes: scenes.map(s => ({
         scene_index: s.scene_index,
-        edited_text: s.edited_text || s.narration_text,
-        edited_tags: s.edited_tags || s.image_prompt,
+        edited_text: s.edited_text !== undefined ? s.edited_text : s.narration_text,
+        edited_tags: s.edited_tags !== undefined ? s.edited_tags : s.image_prompt,
+        edited_audio: s.edited_audio !== undefined ? s.edited_audio : (s.narration_audio || s.narration_text),
       })),
     });
     return response.data;
@@ -82,8 +83,10 @@ export const jobsApi = {
   },
 
   // Regenerate a single scene image
-  regenerateScene: async (jobId, sceneIndex) => {
-    const response = await api.post(`/api/v2/jobs/${jobId}/scenes/${sceneIndex}/regenerate_image`);
+  regenerateScene: async (jobId, sceneIndex, tags = null) => {
+    const response = await api.post(`/api/v2/jobs/${jobId}/scenes/${sceneIndex}/regenerate_image`, {
+      edited_tags: tags
+    });
     return response.data;
   },
 };

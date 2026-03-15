@@ -205,8 +205,11 @@ export default function VisualReview() {
       delete blobUrls.current[sceneIndex];
     }
     try {
+      const scene = useStore.getState().scriptScenes.find(s => s.scene_index === sceneIndex);
+      const tags = scene?.edited_tags || scene?.image_prompt;
+      
       // Backend now waits for generation to finish before responding
-      await jobsApi.regenerateScene(currentJobId, sceneIndex);
+      await jobsApi.regenerateScene(currentJobId, sceneIndex, tags);
       
       const newTs = Date.now();
       setTimestamps(prev => ({ ...prev, [sceneIndex]: newTs }));
@@ -354,9 +357,13 @@ export default function VisualReview() {
                       {isRegen ? '...' : 'REGENERATE'}
                     </button>
                   </div>
-                  <p className="text-[10px] text-textSecondary truncate font-mono opacity-50 leading-tight">
-                    {scene.edited_tags || scene.image_prompt}
-                  </p>
+                  <input 
+                    type="text"
+                    value={scene.edited_tags !== undefined ? scene.edited_tags : scene.image_prompt}
+                    onChange={(e) => updateSceneTags(i, e.target.value)}
+                    className="w-full bg-white/5 text-[10px] text-textSecondary font-mono border border-white/5 rounded px-2 py-1 outline-none focus:border-accent/40 focus:bg-white/10 transition-all"
+                    disabled={isRegen}
+                  />
                 </div>
               </div>
             );

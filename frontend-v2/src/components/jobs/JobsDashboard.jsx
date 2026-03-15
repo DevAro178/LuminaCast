@@ -23,6 +23,7 @@ export default function JobsDashboard() {
   const searchQuery = useStore(state => state.searchQuery);
   const resumeJob = useStore(state => state.resumeJob);
   const [jobs, setJobs] = useState([]);
+  const [viewingScript, setViewingScript] = useState(null); // { jobId, topic, scenes }
 
   const fetchJobs = async () => {
     try {
@@ -43,6 +44,19 @@ export default function JobsDashboard() {
     job.topic.toLowerCase().includes(searchQuery.toLowerCase()) ||
     job.status.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleViewScript = async (job) => {
+    try {
+      const scenes = await jobsApi.getScenes(job.id);
+      setViewingScript({
+        jobId: job.id,
+        topic: job.topic,
+        scenes
+      });
+    } catch (err) {
+      console.error("Failed to load script:", err);
+    }
+  };
 
   return (
     <div className="animate-in fade-in duration-300">
@@ -121,19 +135,82 @@ export default function JobsDashboard() {
                   </Button>
                 )}
                 {job.status === 'completed' && (
-                  <Button
-                    variant="accent"
-                    className="px-6 py-2 text-xs font-display font-black shadow-lg shadow-accent/20"
-                    onClick={() => useStore.setState({ activeTab: 'library', currentJobId: job.id })}
-                  >
-                    VIEW VIDEO
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      className="px-6 py-2 text-xs font-display font-black tracking-widest border-white/10 text-textSecondary hover:bg-white/10"
+                      onClick={() => handleViewScript(job)}
+                    >
+                      VIEW SCRIPT
+                    </Button>
+                    <Button
+                      variant="accent"
+                      className="px-6 py-2 text-xs font-display font-black shadow-lg shadow-accent/20"
+                      onClick={() => useStore.setState({ activeTab: 'library', currentJobId: job.id })}
+                    >
+                      VIEW VIDEO
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Script View Modal */}
+      {viewingScript && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 sm:p-24">
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-xl" onClick={() => setViewingScript(null)} />
+          <div className="relative w-full max-w-4xl max-h-full bg-card border border-white/10 rounded-[2.5rem] shadow-2xl flex flex-col animate-in zoom-in-95 duration-300">
+            {/* Modal Header */}
+            <div className="p-8 border-b border-white/5 flex justify-between items-center">
+              <div>
+                <h4 className="text-[10px] font-black font-display text-accent uppercase tracking-[0.2em] mb-1">SCRIPT VIEW</h4>
+                <p className="text-xl font-display font-black text-white truncate max-w-lg">{viewingScript.topic}</p>
+              </div>
+              <button 
+                onClick={() => setViewingScript(null)}
+                className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-8 space-y-4 custom-scrollbar">
+              {viewingScript.scenes.map((scene, i) => (
+                <div key={i} className="p-6 bg-white/5 rounded-3xl border border-white/5 flex gap-6">
+                  <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center text-accent font-display font-black flex-shrink-0">
+                    {i + 1}
+                  </div>
+                  <div className="flex-1 space-y-4">
+                    <div>
+                      <label className="text-[10px] font-bold text-textSecondary uppercase tracking-widest block mb-1 opacity-50">Transcription</label>
+                      <p className="text-sm text-white/90 leading-relaxed italic">"{scene.edited_text || scene.narration_text}"</p>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-accent uppercase tracking-widest block mb-1 opacity-50">Visual Concept</label>
+                      <p className="text-xs font-mono text-accent/80 leading-relaxed">{scene.edited_tags || scene.image_prompt}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-8 border-t border-white/5 flex justify-end">
+              <Button 
+                variant="outline" 
+                className="px-8 py-3 rounded-full text-xs font-black tracking-widest border-white/10 hover:bg-white/5"
+                onClick={() => setViewingScript(null)}
+              >
+                CLOSE
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

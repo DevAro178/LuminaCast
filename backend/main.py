@@ -89,8 +89,9 @@ class JobResponse(BaseModel):
 
 class SceneUpdate(BaseModel):
     scene_index: int
-    edited_text: str
-    edited_tags: str
+    edited_text: str | None = None
+    edited_tags: str | None = None
+    edited_audio: str | None = None
 
 class ScenesUpdateRequest(BaseModel):
     scenes: list[SceneUpdate]
@@ -183,11 +184,15 @@ async def update_job_scenes(job_id: str, request: ScenesUpdateRequest):
     for scene_update in request.scenes:
         if scene_update.scene_index in scene_map:
             scene_id = scene_map[scene_update.scene_index]
-            await db.update_scene(
-                scene_id, 
-                edited_text=scene_update.edited_text,
-                edited_tags=scene_update.edited_tags
-            )
+            update_data = {}
+            if scene_update.edited_text is not None:
+                update_data["edited_text"] = scene_update.edited_text
+            if scene_update.edited_tags is not None:
+                update_data["edited_tags"] = scene_update.edited_tags
+            if scene_update.edited_audio is not None:
+                update_data["edited_audio"] = scene_update.edited_audio
+            if update_data:
+                await db.update_scene(scene_id, **update_data)
             
     await db.update_job(job_id, approved_script=True)
     return {"status": "success"}
@@ -229,16 +234,19 @@ async def assemble_final_video(job_id: str, background_tasks: BackgroundTasks):
     background_tasks.add_task(assemble_job_video, job_id)
     return {"status": "assembling"}
 
+class RegenerateSceneRequest(BaseModel):
+    edited_tags: str | None = None
+
 @app.post("/api/v2/jobs/{job_id}/scenes/{scene_index}/regenerate_image")
-async def regenerate_scene_image(job_id: str, scene_index: int):
-    """Re-generates the image for a single scene without affecting others."""
+async def regenerate_job_scene_image(job_id: str, scene_index: int, request: RegenerateSceneRequest = None):
+    """Triggers image re-generation for a single scene."""
     job = await db.get_job(job_id)
     if not job:
         raise HTTPException(404, "Job not found")
-    
+        
+    custom_tags = request.edited_tags if request else None
     from pipeline.orchestrator import regenerate_single_scene
-    await regenerate_single_scene(job_id, scene_index)
-    
+    await regenerate_single_scene(job_id, scene_index, custom_tags)
     return {"status": "regenerating_complete", "scene_index": scene_index}
 
 

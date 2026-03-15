@@ -104,7 +104,7 @@ async def generate_speech_for_scenes(
         audio_path = audio_dir / f"scene_{i:03d}.wav"
         try:
             result = await generate_speech(
-                text=scene["narration_text"],
+                text=scene.get("narration_audio", scene["narration_text"]),
                 output_path=audio_path,
                 voice_type=voice_type,
             )

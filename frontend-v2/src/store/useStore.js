@@ -167,6 +167,10 @@ const useStore = create((set, get) => ({
   updateSceneText: (index, text) => set((state) => ({
     scriptScenes: state.scriptScenes.map((s, i) => i === index ? { ...s, edited_text: text } : s)
   })),
+
+  updateSceneAudio: (index, audio) => set((state) => ({
+    scriptScenes: state.scriptScenes.map((s, i) => i === index ? { ...s, edited_audio: audio } : s)
+  })),
   
   updateSceneTags: (index, tags) => set((state) => ({
     scriptScenes: state.scriptScenes.map((s, i) => i === index ? { ...s, edited_tags: tags } : s)

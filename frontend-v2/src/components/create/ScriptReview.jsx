@@ -6,6 +6,7 @@ import Loader from '../ui/Loader';
 export default function ScriptReview() {
   const scriptScenes = useStore(state => state.scriptScenes);
   const updateSceneText = useStore(state => state.updateSceneText);
+  const updateSceneAudio = useStore(state => state.updateSceneAudio);
   const updateSceneTags = useStore(state => state.updateSceneTags);
   const saveScriptEdits = useStore(state => state.saveScriptEdits);
   const reviseScript = useStore(state => state.reviseScript);
@@ -55,14 +56,25 @@ export default function ScriptReview() {
               {index + 1}
             </div>
             <div className="flex-1 space-y-6">
-              <div>
-                <label className="text-[10px] font-black font-display text-textSecondary uppercase mb-2 block tracking-widest opacity-50">Narration</label>
-                <textarea 
-                  value={scene.edited_text || scene.narration_text}
-                  onChange={(e) => updateSceneText(index, e.target.value)}
-                  className="w-full bg-white/5 rounded-2xl p-4 text-sm outline-none focus:bg-white/10 border border-transparent focus:border-accent/30 resize-none h-24 leading-relaxed font-medium transition-all"
-                  disabled={isGenerating}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black font-display text-textSecondary uppercase mb-2 block tracking-widest opacity-50">On-Screen Captions</label>
+                  <textarea 
+                    value={scene.edited_text !== undefined ? scene.edited_text : scene.narration_text}
+                    onChange={(e) => updateSceneText(index, e.target.value)}
+                    className="w-full bg-white/5 rounded-2xl p-4 text-sm outline-none focus:bg-white/10 border border-transparent focus:border-accent/30 resize-none h-24 leading-relaxed font-medium transition-all"
+                    disabled={isGenerating}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black font-display text-textSecondary uppercase mb-2 block tracking-widest opacity-50">Phonetic Audio (TTS)</label>
+                  <textarea 
+                    value={scene.edited_audio !== undefined ? scene.edited_audio : (scene.narration_audio || scene.narration_text)}
+                    onChange={(e) => updateSceneAudio(index, e.target.value)}
+                    className="w-full bg-white/5 rounded-2xl p-4 text-sm outline-none focus:bg-white/10 border border-transparent focus:border-accent/30 resize-none h-24 leading-relaxed font-medium transition-all"
+                    disabled={isGenerating}
+                  />
+                </div>
               </div>
               <div className="relative group-hover:translate-x-1 transition-transform">
                 <label className="text-[10px] font-black font-display text-accent uppercase mb-2 block tracking-widest">Visual Tags (SDXL)</label>

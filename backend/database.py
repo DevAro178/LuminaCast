@@ -36,13 +36,24 @@ async def init_db():
                 job_id TEXT NOT NULL,
                 scene_index INTEGER NOT NULL,
                 narration_text TEXT NOT NULL,
+                narration_audio TEXT,
                 image_prompt TEXT NOT NULL,
                 edited_text TEXT,
                 edited_tags TEXT,
+                edited_audio TEXT,
                 image_path TEXT,
                 audio_path TEXT,
                 duration_seconds REAL,
                 FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+            )
+        """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS image_pool (
+                id TEXT PRIMARY KEY,
+                image_tags TEXT NOT NULL,
+                file_path TEXT NOT NULL,
+                source_job_id TEXT NOT NULL,
+                created_at TEXT NOT NULL
             )
         """)
         # Schema Migration: Add columns to existing tables if they omit them
@@ -52,6 +63,8 @@ async def init_db():
             await db.execute("ALTER TABLE jobs ADD COLUMN approved_visuals BOOLEAN NOT NULL DEFAULT 0")
             await db.execute("ALTER TABLE scenes ADD COLUMN edited_text TEXT")
             await db.execute("ALTER TABLE scenes ADD COLUMN edited_tags TEXT")
+            await db.execute("ALTER TABLE scenes ADD COLUMN narration_audio TEXT")
+            await db.execute("ALTER TABLE scenes ADD COLUMN edited_audio TEXT")
         except aiosqlite.OperationalError:
             # Columns likely already exist
             pass
@@ -126,10 +139,11 @@ async def create_scenes(job_id: str, scenes: list[dict]):
     async with aiosqlite.connect(DB_PATH) as db:
         for i, scene in enumerate(scenes):
             scene_id = f"{job_id}-s{i:03d}"
+            n_audio = scene.get("narration_audio", scene.get("narration_text", ""))
             await db.execute(
-                """INSERT INTO scenes (id, job_id, scene_index, narration_text, image_prompt)
-                   VALUES (?, ?, ?, ?, ?)""",
-                (scene_id, job_id, i, scene["narration_text"], scene["image_prompt"])
+                """INSERT INTO scenes (id, job_id, scene_index, narration_text, narration_audio, image_prompt)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (scene_id, job_id, i, scene["narration_text"], n_audio, scene["image_prompt"])
             )
         await db.execute(
             "UPDATE jobs SET total_scenes = ? WHERE id = ?",
@@ -167,3 +181,26 @@ async def delete_scenes_for_job(job_id: str):
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("DELETE FROM scenes WHERE job_id = ?", (job_id,))
         await db.commit()
+
+
+# --- Image Pool Operations ---
+
+async def add_to_image_pool(image_tags: str, file_path: str, source_job_id: str):
+    """Add a generated image to the global pool for future reuse."""
+    pool_id = str(uuid.uuid4())[:12]
+    now = datetime.now(timezone.utc).isoformat()
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """INSERT INTO image_pool (id, image_tags, file_path, source_job_id, created_at)
+               VALUES (?, ?, ?, ?, ?)""",
+            (pool_id, image_tags, file_path, source_job_id, now)
+        )
+        await db.commit()
+
+async def get_all_pool_images() -> list[dict]:
+    """Retrieve all images from the global pool for similarity matching."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT * FROM image_pool ORDER BY created_at DESC") as cursor:
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
