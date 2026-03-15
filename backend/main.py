@@ -66,7 +66,7 @@ app.mount("/api/v2/assets/jobs", StaticFiles(directory=JOBS_DIR), name="jobs_ass
 # --- Request/Response Models ---
 
 class GenerateRequest(BaseModel):
-    topic: str = Field(..., min_length=3, max_length=500, description="Video topic or title")
+    topic: str = Field(..., min_length=3, max_length=2000, description="Video topic or title")
     video_type: str = Field("short", pattern="^(long|short)$", description="'long' (5-10 min) or 'short' (30-60s)")
     voice_type: str = Field("female", pattern="^(female|male)$", description="Voice type for narration")
 
@@ -96,7 +96,7 @@ class ScenesUpdateRequest(BaseModel):
     scenes: list[SceneUpdate]
 
 class GenerateV2Request(BaseModel):
-    topic: str = Field(..., min_length=3, max_length=500, description="Video topic or title")
+    topic: str = Field(..., min_length=3, max_length=2000, description="Video topic or title")
     video_type: str = Field("short", pattern="^(long|short)$", description="'long' (5-10 min) or 'short' (30-60s)")
     voice_type: str = Field("female", pattern="^(female|male)$", description="Voice type for narration")
     workflow_mode: str = Field("advanced", pattern="^(basic|advanced)$")
