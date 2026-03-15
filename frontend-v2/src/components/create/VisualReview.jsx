@@ -118,6 +118,7 @@ export default function VisualReview() {
   const regeneratingScenes  = useStore(state => state.regeneratingScenes);
   const addRegeneratingScene    = useStore(state => state.addRegeneratingScene);
   const removeRegeneratingScene = useStore(state => state.removeRegeneratingScene);
+  const updateSceneTags     = useStore(state => state.updateSceneTags);
 
   const [lightbox, setLightbox]       = useState(null); // { blobUrl, label }
   const [timestamps, setTimestamps]   = useState({});
