@@ -90,6 +90,8 @@ export default function VisualReview() {
   const [regeneratingScenes, setRegeneratingScenes] = useState(new Set());
   const [timestamps, setTimestamps] = useState({});
   const [loadedImages, setLoadedImages] = useState(new Set()); // Track which images have loaded
+  // Stable timestamp computed once on mount — never changes on re-render
+  const stableTs = useRef(Date.now());
 
   const isPortrait = jobVideoType === 'short';
 
@@ -130,7 +132,9 @@ export default function VisualReview() {
 
   const getImageUrl = (sceneIndex, ts) => {
     const padded = String(sceneIndex).padStart(3, '0');
-    return `${config.apiBaseUrl}/api/v2/assets/jobs/${currentJobId}/images/scene_${padded}.jpg?t=${ts || Date.now()}`;
+    // Use per-scene override ts (set after regeneration) OR the stable base timestamp
+    const cacheBust = ts || stableTs.current;
+    return `${config.apiBaseUrl}/api/v2/assets/jobs/${currentJobId}/images/scene_${padded}.jpg?t=${cacheBust}`;
   };
 
   // ── Loading States ──────────────────────────────────────────────────────
