@@ -205,11 +205,12 @@ export default function VisualReview() {
       delete blobUrls.current[sceneIndex];
     }
     try {
+      // Backend now waits for generation to finish before responding
       await jobsApi.regenerateScene(currentJobId, sceneIndex);
-      setTimeout(() => {
-        setTimestamps(prev => ({ ...prev, [sceneIndex]: Date.now() }));
-        removeRegeneratingScene(sceneIndex);
-      }, 22000); // Easy Diffusion typically 15-25s
+      
+      const newTs = Date.now();
+      setTimestamps(prev => ({ ...prev, [sceneIndex]: newTs }));
+      removeRegeneratingScene(sceneIndex);
     } catch (err) {
       console.error("Regen failed:", err);
       removeRegeneratingScene(sceneIndex);
