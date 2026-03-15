@@ -60,7 +60,7 @@ export default function ScriptReview() {
                 <div>
                   <label className="text-[10px] font-black font-display text-textSecondary uppercase mb-2 block tracking-widest opacity-50">On-Screen Captions</label>
                   <textarea 
-                    value={scene.edited_text !== undefined ? scene.edited_text : scene.narration_text}
+                    value={scene.edited_text ?? scene.narration_text}
                     onChange={(e) => updateSceneText(index, e.target.value)}
                     className="w-full bg-white/5 rounded-2xl p-4 text-sm outline-none focus:bg-white/10 border border-transparent focus:border-accent/30 resize-none h-24 leading-relaxed font-medium transition-all"
                     disabled={isGenerating}
@@ -69,7 +69,7 @@ export default function ScriptReview() {
                 <div>
                   <label className="text-[10px] font-black font-display text-textSecondary uppercase mb-2 block tracking-widest opacity-50">Phonetic Audio (TTS)</label>
                   <textarea 
-                    value={scene.edited_audio !== undefined ? scene.edited_audio : (scene.narration_audio || scene.narration_text)}
+                    value={scene.edited_audio ?? (scene.narration_audio || scene.narration_text)}
                     onChange={(e) => updateSceneAudio(index, e.target.value)}
                     className="w-full bg-white/5 rounded-2xl p-4 text-sm outline-none focus:bg-white/10 border border-transparent focus:border-accent/30 resize-none h-24 leading-relaxed font-medium transition-all"
                     disabled={isGenerating}

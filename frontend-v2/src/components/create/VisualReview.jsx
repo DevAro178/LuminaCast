@@ -359,7 +359,7 @@ export default function VisualReview() {
                   </div>
                   <input 
                     type="text"
-                    value={scene.edited_tags !== undefined ? scene.edited_tags : scene.image_prompt}
+                    value={scene.edited_tags ?? scene.image_prompt}
                     onChange={(e) => updateSceneTags(i, e.target.value)}
                     className="w-full bg-white/5 text-[10px] text-textSecondary font-mono border border-white/5 rounded px-2 py-1 outline-none focus:border-accent/40 focus:bg-white/10 transition-all"
                     disabled={isRegen}
