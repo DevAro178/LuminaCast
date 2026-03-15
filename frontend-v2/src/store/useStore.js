@@ -33,6 +33,11 @@ const useStore = create((set, get) => ({
     }
   },
 
+  // Per-scene regeneration tracking (survives navigation)
+  regeneratingScenes: new Set(),
+  addRegeneratingScene: (idx) => set(s => ({ regeneratingScenes: new Set([...s.regeneratingScenes, idx]) })),
+  removeRegeneratingScene: (idx) => set(s => { const n = new Set(s.regeneratingScenes); n.delete(idx); return { regeneratingScenes: n }; }),
+
   // Job Tracking State
   currentJobId: null,
   isGenerating: false,
