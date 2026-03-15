@@ -7,7 +7,6 @@ export default function AssemblyView() {
       <Loader 
         title="ASSEMBLING VIDEO..."
         message="Generating Audio & Captions, stitching final MP4."
-        fullScreen={true}
       />
     </div>
   );

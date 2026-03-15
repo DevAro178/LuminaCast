@@ -68,7 +68,7 @@ export default function ContentGrid() {
             </div>
           </div>
           
-          <div className="col-span-2 bento-card-light relative overflow-hidden transition-all duration-500 flex flex-col justify-center">
+          <div className="col-span-2 bento-card relative overflow-hidden transition-all duration-500 flex flex-col justify-center">
             {isGenerating && (status === 'generating_script' || status === 'queued') && (
               <Loader 
                 title={mode === 'basic' ? "JOB CREATED!" : "DRAFTING SCRIPT..."}
@@ -80,7 +80,7 @@ export default function ContentGrid() {
             <h3 className="text-4xl font-black tracking-tight mb-2">
               {mode === 'basic' ? "QUICK START" : "STUDIO DRAFTING"}
             </h3>
-            <p className="text-background/60 mb-6 max-w-sm">
+            <p className="text-textSecondary mb-6 max-w-sm font-medium">
               {mode === 'basic' 
                 ? "Enter a topic and let our models handle the script, visuals, and audio in one click."
                 : "Describe your video vision in detail. We'll generate a comprehensive script for your approval."
