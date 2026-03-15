@@ -29,7 +29,7 @@ export default function Select({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="bg-background/10 text-background px-6 py-2.5 rounded-full text-sm font-bold flex items-center gap-3 hover:bg-background/20 transition-all active:scale-95 outline-none border border-background/5"
+        className="bg-white/5 text-white px-6 py-2.5 rounded-full text-sm font-bold flex items-center gap-3 hover:bg-white/10 transition-all active:scale-95 outline-none border border-white/10"
       >
         <span>{selectedOption?.label}</span>
         <ChevronDown 

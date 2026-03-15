@@ -112,7 +112,7 @@ export default function ContentGrid() {
                 value={topicInput}
                 onChange={(e) => setTopicInput(e.target.value)}
                 placeholder={mode === 'basic' ? "What's your video about?" : "Describe target audience, style, and tone..."} 
-                className="flex-1 bg-background/5 rounded-full px-6 py-4 outline-none placeholder:text-background/40 font-medium disabled:opacity-50"
+                className="flex-1 bg-white/5 rounded-full px-6 py-4 outline-none placeholder:text-white/30 text-white font-medium disabled:opacity-50 border border-white/5 focus:border-white/20 transition-all"
                 disabled={isGenerating}
               />
               <Button 
