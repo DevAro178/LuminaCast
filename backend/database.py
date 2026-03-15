@@ -57,17 +57,22 @@ async def init_db():
             )
         """)
         # Schema Migration: Add columns to existing tables if they omit them
-        try:
-            await db.execute("ALTER TABLE jobs ADD COLUMN workflow_mode TEXT NOT NULL DEFAULT 'basic'")
-            await db.execute("ALTER TABLE jobs ADD COLUMN approved_script BOOLEAN NOT NULL DEFAULT 0")
-            await db.execute("ALTER TABLE jobs ADD COLUMN approved_visuals BOOLEAN NOT NULL DEFAULT 0")
-            await db.execute("ALTER TABLE scenes ADD COLUMN edited_text TEXT")
-            await db.execute("ALTER TABLE scenes ADD COLUMN edited_tags TEXT")
-            await db.execute("ALTER TABLE scenes ADD COLUMN narration_audio TEXT")
-            await db.execute("ALTER TABLE scenes ADD COLUMN edited_audio TEXT")
-        except aiosqlite.OperationalError:
-            # Columns likely already exist
-            pass
+        migration_queries = [
+            "ALTER TABLE jobs ADD COLUMN workflow_mode TEXT NOT NULL DEFAULT 'basic'",
+            "ALTER TABLE jobs ADD COLUMN approved_script BOOLEAN NOT NULL DEFAULT 0",
+            "ALTER TABLE jobs ADD COLUMN approved_visuals BOOLEAN NOT NULL DEFAULT 0",
+            "ALTER TABLE scenes ADD COLUMN edited_text TEXT",
+            "ALTER TABLE scenes ADD COLUMN edited_tags TEXT",
+            "ALTER TABLE scenes ADD COLUMN narration_audio TEXT",
+            "ALTER TABLE scenes ADD COLUMN edited_audio TEXT",
+        ]
+        
+        for query in migration_queries:
+            try:
+                await db.execute(query)
+            except aiosqlite.OperationalError:
+                # Column likely already exists
+                pass
             
         await db.commit()
 
