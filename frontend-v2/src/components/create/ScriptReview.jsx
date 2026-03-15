@@ -1,6 +1,7 @@
 import React from 'react';
 import useStore from '../../store/useStore';
 import Button from '../ui/Button';
+import Loader from '../ui/Loader';
 
 export default function ScriptReview() {
   const scriptScenes = useStore(state => state.scriptScenes);
@@ -17,8 +18,17 @@ export default function ScriptReview() {
 
   return (
     <div className="col-span-3 bento-card animate-in slide-in-from-right-8 duration-500 relative">
+      {/* AI Revision in-progress overlay */}
+      {status === 'revising_script' && (
+        <div className="absolute inset-0 z-10 bg-card/80 backdrop-blur-sm rounded-[24px] flex items-center justify-center">
+          <Loader
+            title="AI REVISING SCRIPT..."
+            message="Analysing your edits and generating an improved script..."
+          />
+        </div>
+      )}
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-3xl font-display font-black italic tracking-tighter">SCRIPT REVIEW</h3>
+        <h3 className="text-3xl font-display font-black tracking-tighter">SCRIPT REVIEW</h3>
         <div className="flex gap-4">
           <Button 
             variant="outline" 
@@ -26,7 +36,7 @@ export default function ScriptReview() {
             onClick={handleAiRevision}
             disabled={isGenerating}
           >
-            {status === 'revising_script' ? "REVISING..." : "AI REVISION"}
+            {status === 'revising_script' ? "AI REVISING..." : "AI REVISION"}
           </Button>
           <Button 
             variant="accent" 
@@ -34,7 +44,7 @@ export default function ScriptReview() {
             onClick={saveScriptEdits}
             disabled={isGenerating}
           >
-            {isGenerating ? "SAVING..." : "APPROVE & GENERATE VISUALS"}
+            {isGenerating && status !== 'revising_script' ? "PROCESSING..." : "APPROVE & GENERATE VISUALS"}
           </Button>
         </div>
       </div>
