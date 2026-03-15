@@ -12,18 +12,17 @@ export default function ScriptReview() {
   const status = useStore(state => state.status);
 
   const handleAiRevision = () => {
-    const feedback = prompt("What would you like to improve about the script? (Leave blank for general improvement)");
-    reviseScript(feedback);
+    reviseScript(); // Logic moved to store
   };
 
   return (
     <div className="col-span-3 bento-card animate-in slide-in-from-right-8 duration-500 relative">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-2xl font-black italic tracking-tighter">SCRIPT REVIEW</h3>
+        <h3 className="text-3xl font-display font-black italic tracking-tighter">SCRIPT REVIEW</h3>
         <div className="flex gap-4">
           <Button 
             variant="outline" 
-            className="px-6 py-2 text-xs font-black tracking-widest uppercase hover:bg-accent/10 transition-colors"
+            className="px-6 py-2 text-xs font-display font-black tracking-widest uppercase hover:bg-accent/10 transition-colors"
             onClick={handleAiRevision}
             disabled={isGenerating}
           >
@@ -31,7 +30,7 @@ export default function ScriptReview() {
           </Button>
           <Button 
             variant="accent" 
-            className="px-6 py-2 text-xs font-black tracking-widest uppercase shadow-[0_0_20px_-5px_rgba(255,107,0,0.4)]"
+            className="px-6 py-2 text-xs font-display font-black tracking-widest uppercase shadow-[0_0_20px_-5px_rgba(255,107,0,0.4)]"
             onClick={saveScriptEdits}
             disabled={isGenerating}
           >
@@ -42,12 +41,12 @@ export default function ScriptReview() {
       <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
         {scriptScenes.map((scene, index) => (
           <div key={index} className="p-6 bg-surface/5 rounded-[2rem] flex gap-8 border border-white/5 hover:border-accent/20 transition-all group">
-            <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center font-black text-accent flex-shrink-0 border border-accent/20">
+            <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center font-display font-black text-accent flex-shrink-0 border border-accent/20">
               {index + 1}
             </div>
             <div className="flex-1 space-y-6">
               <div>
-                <label className="text-[10px] font-black text-textSecondary uppercase mb-2 block tracking-widest opacity-50">Narration</label>
+                <label className="text-[10px] font-black font-display text-textSecondary uppercase mb-2 block tracking-widest opacity-50">Narration</label>
                 <textarea 
                   value={scene.edited_text || scene.narration_text}
                   onChange={(e) => updateSceneText(index, e.target.value)}
@@ -56,16 +55,16 @@ export default function ScriptReview() {
                 />
               </div>
               <div className="relative group-hover:translate-x-1 transition-transform">
-                <label className="text-[10px] font-black text-accent uppercase mb-2 block tracking-widest">Visual Tags (SDXL)</label>
+                <label className="text-[10px] font-black font-display text-accent uppercase mb-2 block tracking-widest">Visual Tags (SDXL)</label>
                 <div className="relative">
                   <input 
                     type="text"
                     value={scene.edited_tags || scene.image_prompt}
                     onChange={(e) => updateSceneTags(index, e.target.value)}
-                    className="w-full bg-accent/20 text-accent rounded-2xl p-5 text-sm outline-none border border-accent/30 focus:border-accent focus:bg-accent/30 font-mono font-bold shadow-inner-accent transition-all"
+                    className="w-full bg-accent/30 text-white rounded-2xl p-5 text-sm outline-none border border-accent/50 focus:border-accent focus:bg-accent/40 font-mono font-bold shadow-inner-accent transition-all placeholder:text-white/20"
                     disabled={isGenerating}
                   />
-                  <div className="absolute top-1/2 right-4 -translate-y-1/2 w-2 h-2 rounded-full bg-accent animate-pulse opacity-50" />
+                  <div className="absolute top-1/2 right-4 -translate-y-1/2 w-2 h-2 rounded-full bg-accent animate-pulse" />
                 </div>
               </div>
             </div>

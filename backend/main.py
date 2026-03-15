@@ -208,6 +208,16 @@ async def revise_job_script_endpoint(job_id: str, request: ReviseScriptRequest, 
     background_tasks.add_task(revise_job_script, job_id, job["topic"], request.feedback, request.scenes)
     return {"status": "revising_script"}
 
+@app.post("/api/v2/jobs/{job_id}/generate_visuals")
+async def start_visual_generation(job_id: str, background_tasks: BackgroundTasks):
+    """Triggers Stable Diffusion generation for the approved scenes."""
+    job = await db.get_job(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+        
+    background_tasks.add_task(generate_job_visuals, job_id)
+    return {"status": "generating_images"}
+
 @app.post("/api/v2/jobs/{job_id}/assemble")
 async def assemble_final_video(job_id: str, background_tasks: BackgroundTasks):
     """Triggers TTS, Captions, and MoviePy assembly."""

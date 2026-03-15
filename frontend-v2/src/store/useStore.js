@@ -71,11 +71,19 @@ const useStore = create((set, get) => ({
   },
 
   reviseScript: async (feedback = "") => {
-    const { currentJobId, scriptScenes, topicInput } = get();
+    const { currentJobId, scriptScenes, originalScript } = get();
     set({ isGenerating: true, status: 'revising_script' });
     
+    // Logic: Compare current scriptScenes vs originalScript to see if user edited anything
+    const isEdited = JSON.stringify(scriptScenes) !== JSON.stringify(originalScript);
+    
     try {
-      await jobsApi.reviseScript(currentJobId, feedback, scriptScenes);
+      // Always send current scenes for reference, but adjust the message
+      const defaultFeedback = isEdited 
+        ? "Please refine the script while keeping and honoring my manual edits to the narration and tags." 
+        : "Please regenerate a significantly better version of this script with more depth and engagement.";
+      
+      await jobsApi.reviseScript(currentJobId, feedback || defaultFeedback, scriptScenes);
       get().startPolling(currentJobId);
     } catch (error) {
       console.error("Failed to revise script:", error);
@@ -92,9 +100,10 @@ const useStore = create((set, get) => ({
         // Dynamic State Transitions
         if (job.status === 'script_review') {
           const scenes = await jobsApi.getScenes(jobId);
-          // Wait to hidden loader until scenes are loaded to prevent flash
+          // Wait to hide loader until scenes are loaded to prevent flash
           set({ 
-            scriptScenes: scenes, 
+            scriptScenes: scenes,
+            originalScript: [...scenes], // Capture original state for comparison
             advancedStep: 'script', 
             isGenerating: false,
             status: 'idle'

@@ -109,4 +109,34 @@ Transition to **LuminaCast Version 2** (Interactive Advanced/Basic Pipelines wit
 - **Axios Integration**: Established `src/api/jobs.js` as the source of truth for all backend communications.
 
 ---
+
+## 📅 March 15, 2026 - AI Revisions & UX Polish (Phase 7)
+
+### 🚀 Major Milestones
+- **AI Revisions Functional**: Implemented a complete feedback loop for script refining.
+  - **Backend**: Added `POST /api/v2/jobs/{id}/revise_script` which accepts user feedback and existing scenes to generate a refined script.
+  - **Orchestration**: Refactored `orchestrator.py` to support `revise_job_script`, handling scene deletion and re-insertion safely.
+- **Dynamic Recent Videos Sidebar**: Built a "live" sidebar in the `ContentGrid` that fetches the 5 most recent successfully completed jobs.
+  - Includes click-to-view deep linking directly into the Media Library.
+- **Search-Driven Navigation**: Connected the Topbar search to global navigation. Typing in search now automatically transitions the user to the 'Jobs' tab and filters results in real-time.
+- **Functional Media Library**: Completed the `MediaLibrary.jsx` component with a specialized sidebar and a full-featured video player for `output.mp4` streams. Added download support.
+
+### 🎨 UI/UX Excellence
+- **High-Contrast Prompt Styling**: Redesigned "Visual Tags" in the Script Review stage with a vibrant, premium look. Differentiates prompts from narrations to avoid user confusion about "disabled" inputs.
+- **Flash-Free Transitions**: Adjusted state timing in `useStore.js` to ensure the loader remains active through the entire async drafting process. Eliminated the visual "flash" between input and review.
+- **Custom Scrollbars & Micro-animations**: Added tailored scrollbars to script lists and pulse animations to "live" status indicators.
+
+### 🛠️ Infrastructure & Git
+- **Code Finalization**: Pushed all Phase 6 & 7 changes (8 files modified) to `origin main`.
+- **API service layer**: Centralized all revision and search logic in `jobs.js` API service.
+
+### 🛠️ Critical Fixes & Logic Refinements
+- **Restored `generate_visuals` Endpoint**: Fixed a 404 error caused by an accidental deletion in `main.py`. Approving a script now correctly triggers image generation.
+- **Smart AI Revision Detection**: Frontend now automatically compares the current script against the original. If edits are detected, it requests a revision that honors user changes; if not, it requests a general quality improvement.
+- **Typography & Accessibility**: 
+  - Header "SCRIPT REVIEW" now uses the `font-display` (Outfit) font.
+  - Visual Tags inputs updated with high-contrast `text-white` and `bg-accent/30` for better visibility (no longer looks "disabled").
+- **UX**: Removed the intrusive `prompt()` alert for AI revisions in favor of the automated "smart detect" logic.
+
+---
 *End of Context Document*
