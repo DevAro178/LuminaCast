@@ -44,7 +44,7 @@ async def generate_job_script(job_id: str, topic: str, video_type: str) -> dict:
         await db.create_scenes(job_id, scenes)
         await db.update_job(
             job_id,
-            status=f"Drafted {len(scenes)} scenes" if "advanced" else "generating_images",
+            status="script_review",
             progress_pct=15,
             total_scenes=len(scenes),
         )
@@ -88,7 +88,7 @@ async def generate_job_visuals(job_id: str):
                 job_id, 
                 progress_pct=pct, 
                 completed_scenes=completed,
-                status=f"AI Visuals: {completed}/{total}"
+                status="generating_images"
             )
 
         images_dir = job_dir / "images"
@@ -250,7 +250,7 @@ async def run_legacy_pipeline(job_id: str, topic: str, video_type: str, voice_ty
 async def revise_job_script(job_id: str, topic: str, feedback: str = "", current_scenes: list = None):
     """Orchestrates script revision."""
     try:
-        await db.update_job(job_id, status="Revising Script...", progress_pct=10)
+        await db.update_job(job_id, status="revising_script", progress_pct=10)
         
         from pipeline.script_generator import revise_script
         script_data = await revise_script(topic, feedback, current_scenes)
