@@ -80,4 +80,10 @@ export const jobsApi = {
     const response = await api.get('/api/jobs');
     return response.data;
   },
+
+  // Regenerate a single scene image
+  regenerateScene: async (jobId, sceneIndex) => {
+    const response = await api.post(`/api/v2/jobs/${jobId}/scenes/${sceneIndex}/regenerate_image`);
+    return response.data;
+  },
 };

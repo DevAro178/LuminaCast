@@ -229,6 +229,17 @@ async def assemble_final_video(job_id: str, background_tasks: BackgroundTasks):
     background_tasks.add_task(assemble_job_video, job_id)
     return {"status": "generating_audio"}
 
+@app.post("/api/v2/jobs/{job_id}/scenes/{scene_index}/regenerate_image")
+async def regenerate_scene_image(job_id: str, scene_index: int, background_tasks: BackgroundTasks):
+    """Re-generates the image for a single scene without affecting others."""
+    job = await db.get_job(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+    
+    from pipeline.orchestrator import regenerate_single_scene
+    background_tasks.add_task(regenerate_single_scene, job_id, scene_index)
+    return {"status": "regenerating_image", "scene_index": scene_index}
+
 
 @app.get("/api/jobs", response_model=list[dict])
 async def list_all_jobs():

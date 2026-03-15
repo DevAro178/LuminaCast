@@ -225,3 +225,39 @@ async def revise_job_script(job_id: str, topic: str, feedback: str = "", current
     except Exception as e:
         logger.error(f"[{job_id}] Revision failed: {e}")
         await db.update_job(job_id, status="error", error_message=str(e))
+async def regenerate_single_scene(job_id: str, scene_index: int):
+    """
+    Re-generates the image for a single scene without touching others.
+    Useful for the Visual Review 'Regenerate' button.
+    """
+    job = await db.get_job(job_id)
+    job_dir = JOBS_DIR / job_id
+    video_type = job["video_type"]
+    
+    db_scenes = await db.get_scenes(job_id)
+    # Find the specific scene
+    target_scene = next((s for s in db_scenes if s["scene_index"] == scene_index), None)
+    if not target_scene:
+        logger.error(f"[{job_id}] Scene {scene_index} not found for regeneration")
+        return
+    
+    image_prompt = target_scene["edited_tags"] or target_scene["image_prompt"]
+    negative_prompt = target_scene.get("negative_prompt", "")
+    
+    # Save to the same indexed path so the frontend always uses the same URL
+    image_path = job_dir / "images" / f"scene_{scene_index:03d}.jpg"
+    image_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    try:
+        logger.info(f"[{job_id}] Regenerating scene {scene_index}: {image_prompt[:60]}...")
+        from pipeline.image_generator import generate_image
+        saved_path = await generate_image(
+            prompt=image_prompt,
+            output_path=image_path,
+            video_type=video_type,
+            negative_prompt=negative_prompt,
+        )
+        await db.update_scene(target_scene["id"], image_path=saved_path)
+        logger.info(f"[{job_id}] Scene {scene_index} regenerated → {saved_path}")
+    except Exception as e:
+        logger.exception(f"[{job_id}] Failed to regenerate scene {scene_index}: {e}")
