@@ -27,12 +27,6 @@ IMPORTANT RULES:
 26. Never include text, words, or UI elements in image descriptions
 27. Keep narration sentences concise — each should be spoken in 3-8 seconds
 28. For each scene, provide a negative_prompt listing things to EXCLUDE from the image (e.g. artifacts, unwanted elements specific to that scene)
-29. Provide a narration_audio field for voiceover. 
-    - CRITICAL: By default, this field MUST be exactly the same as narration_text.
-    - EXCEPTION: Only use phonetic spellings for names (e.g., "Ye-Suo" -> "Yeh-Suoh"), acronyms ("ADHD" -> "A-D-H-D"), or complex technical terms.
-    - BAD EXAMPLE: "In-uh-world wair whed gamming iz laif" (DO NOT DO THIS)
-    - GOOD EXAMPLE: "In a world where gaming is life, meet the masterminds of King's Avatar." (Keep normal words exactly as they are written).
-    - Failure to keep common English words in their standard spelling will result in unnatural speech. Do not phoneticize simple words like "a", "the", "where", "is", "gaming", "life", etc.
 """
 
 LONG_FORM_PROMPT = """Write a YouTube narration script about: "{topic}"
@@ -49,7 +43,6 @@ Respond ONLY with valid JSON in this exact format, no markdown:
   "scenes": [
     {{
       "narration_text": "One grammatically correct sentence of narration for the captions.",
-      "narration_audio": "Exactly the same as narration_text. ONLY use phonetic overrides for names/acronyms if needed.",
       "image_prompt": "Comma-separated visual tags (Danbooru style). REUSE these exact strings frequently.",
       "negative_prompt": "Scene-specific things to exclude from the image."
     }}
@@ -67,7 +60,6 @@ Respond ONLY with valid JSON in this exact format, no markdown:
   "scenes": [
     {{
       "narration_text": "One grammatically correct sentence of narration for the captions.",
-      "narration_audio": "Exactly the same as narration_text. ONLY use phonetic overrides for names/acronyms.",
       "image_prompt": "Comma-separated visual tags (Danbooru style).",
       "negative_prompt": "Scene-specific things to exclude from the image."
     }}
@@ -144,6 +136,10 @@ async def generate_script(topic: str, video_type: str = "long") -> dict:
     for i, scene in enumerate(scenes):
         if "narration_text" not in scene or "image_prompt" not in scene:
             raise ValueError(f"Scene {i} missing required fields")
+        
+        # Manually duplicate narration_text to narration_audio as requested
+        scene["narration_audio"] = scene["narration_text"]
+        
         # Ensure negative_prompt has a fallback if the LLM omits it
         if "negative_prompt" not in scene:
             scene["negative_prompt"] = ""
@@ -172,7 +168,6 @@ Respond ONLY with valid JSON in the exact same format as before:
   "scenes": [
     {{
       "narration_text": "...",
-      "narration_audio": "...",
       "image_prompt": "...",
       "negative_prompt": "..."
     }}
@@ -222,5 +217,10 @@ async def revise_script(topic: str, feedback: str = "", current_scenes: list = N
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse revised script JSON: {e}")
         raise ValueError(f"LLM returned invalid JSON for revision: {e}")
+
+    # Manually duplicate narration_text to narration_audio for revised scenes
+    for scene in script_data.get("scenes", []):
+        if "narration_text" in scene:
+            scene["narration_audio"] = scene["narration_text"]
 
     return script_data
