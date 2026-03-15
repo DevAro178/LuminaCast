@@ -86,11 +86,11 @@ export default function VisualReview() {
   const status = useStore(state => state.status);
   const progress = useStore(state => state.progress);
 
-  const [lightbox, setLightbox] = useState(null); // { url, label }
+  const [lightbox, setLightbox] = useState(null);
   const [regeneratingScenes, setRegeneratingScenes] = useState(new Set());
-  const [timestamps, setTimestamps] = useState({}); // per-scene cache buster
+  const [timestamps, setTimestamps] = useState({});
+  const [loadedImages, setLoadedImages] = useState(new Set()); // Track which images have loaded
 
-  // Aspect ratio: 9:16 for short (portrait), 16:9 for long (landscape)
   const isPortrait = jobVideoType === 'short';
 
   const handleApproveAll = async () => {
@@ -198,27 +198,35 @@ export default function VisualReview() {
                 onClick={() => !isRegen && setLightbox({ url, label: `Scene ${i + 1}` })}
               >
                 {/* Image wrapper — ratio locked */}
-                <div className={`relative w-full ${isPortrait ? 'aspect-[9/16]' : 'aspect-video'} overflow-hidden`}>
+                <div className={`relative w-full ${isPortrait ? 'aspect-[9/16]' : 'aspect-video'} overflow-hidden bg-white/5`}>
                   {isRegen ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 gap-3">
                       <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
                       <span className="text-[10px] font-display font-black text-accent uppercase tracking-widest">Generating...</span>
                     </div>
                   ) : (
-                    <img
-                      src={url}
-                      alt={`Scene ${i + 1}`}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      onError={(e) => {
-                        e.target.src = `https://placehold.co/400x${isPortrait ? '720' : '225'}/1A3333/4A7A7A?text=Scene+${i + 1}`;
-                      }}
-                    />
-                  )}
-                  {/* Hover zoom hint */}
-                  {!isRegen && (
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
-                      <span className="text-white text-xs font-display font-black tracking-widest uppercase bg-black/50 px-3 py-1 rounded-full">CLICK TO EXPAND</span>
-                    </div>
+                    <>
+                      {/* Shimmer skeleton — shown while image is loading */}
+                      {!loadedImages.has(idx) && (
+                        <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-white/5 via-white/10 to-white/5" />
+                      )}
+                      <img
+                        src={url}
+                        alt={`Scene ${i + 1}`}
+                        className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-500 ${loadedImages.has(idx) ? 'opacity-100' : 'opacity-0'}`}
+                        onLoad={() => setLoadedImages(prev => new Set([...prev, idx]))}
+                        onError={(e) => {
+                          setLoadedImages(prev => new Set([...prev, idx]));
+                          e.target.src = `https://placehold.co/400x${isPortrait ? '720' : '225'}/1A3333/4A7A7A?text=Scene+${i + 1}`;
+                        }}
+                      />
+                      {/* Hover expand hint */}
+                      {loadedImages.has(idx) && (
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
+                          <span className="text-white text-xs font-display font-black tracking-widest uppercase bg-black/50 px-3 py-1 rounded-full">CLICK TO EXPAND</span>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
 

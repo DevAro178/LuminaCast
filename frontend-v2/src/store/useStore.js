@@ -159,6 +159,42 @@ const useStore = create((set, get) => ({
   updateSceneTags: (index, tags) => set((state) => ({
     scriptScenes: state.scriptScenes.map((s, i) => i === index ? { ...s, edited_tags: tags } : s)
   })),
+
+  // Resume an existing job from the Jobs dashboard into Focus Mode
+  resumeJob: async (jobId) => {
+    set({ isGenerating: true, currentJobId: jobId, activeTab: 'create', mode: 'advanced' });
+    try {
+      const job = await jobsApi.getJobStatus(jobId);
+      set({ status: job.status, progress: job.progress_pct, videoType: job.video_type });
+
+      if (job.status === 'script_review') {
+        const scenes = await jobsApi.getScenes(jobId);
+        set({
+          scriptScenes: scenes,
+          originalScript: [...scenes],
+          advancedStep: 'script',
+          isGenerating: false,
+          status: 'idle',
+        });
+      } else if (job.status === 'visual_review') {
+        const scenes = await jobsApi.getScenes(jobId);
+        set({
+          scriptScenes: scenes,
+          advancedStep: 'visuals',
+          isGenerating: false,
+        });
+      } else if (job.status === 'generating_images' || job.status === 'generating_script') {
+        // Still running — enter focus mode and let polling handle transitions
+        set({ advancedStep: 'visuals', isGenerating: true });
+        get().startPolling(jobId);
+      } else {
+        set({ isGenerating: false, advancedStep: 'input' });
+      }
+    } catch (err) {
+      console.error("Failed to resume job:", err);
+      set({ isGenerating: false });
+    }
+  },
 }));
 
 export default useStore;
