@@ -131,7 +131,9 @@ export default function VisualReview() {
   const isPortrait  = jobVideoType === 'short';
   const totalScenes = scriptScenes.length;
 
-  // Live-poll scene completion counter
+  // Live-poll scene completion counter AND bust per-scene timestamps as new images arrive
+  const prevCompletedRef = useRef(0);
+
   useEffect(() => {
     if (!currentJobId) return;
     let cancelled = false;
@@ -141,19 +143,36 @@ export default function VisualReview() {
         const job = await jobsApi.getJobStatus(currentJobId);
         if (cancelled) return;
 
-        // When status is visual_review or beyond, ALL images are generated
         const doneStatuses = ['visual_review', 'assembling', 'generating_audio', 'adding_captions', 'completed'];
-        if (doneStatuses.includes(job.status)) {
-          setGeneratedCount(totalScenes);
-        } else {
-          // Use completed_scenes field directly from the backend record
-          setGeneratedCount(job.completed_scenes ?? 0);
+        const isDone = doneStatuses.includes(job.status);
+        const completed = isDone ? totalScenes : (job.completed_scenes ?? 0);
+
+        setGeneratedCount(completed);
+
+        // Bust cache for any scenes that just finished since the last poll
+        const prev = prevCompletedRef.current;
+        if (completed > prev) {
+          const freshTs = Date.now();
+          setTimestamps(existing => {
+            const next = { ...existing };
+            for (let i = prev; i < completed; i++) {
+              next[i] = freshTs; // override so getImageUrl returns a fresh URL
+            }
+            return next;
+          });
+          // Also clear loadedImages for new scenes so skeleton → real image transition plays
+          setLoadedImages(existing => {
+            const next = new Set(existing);
+            for (let i = prev; i < completed; i++) next.delete(i);
+            return next;
+          });
+          prevCompletedRef.current = completed;
         }
       } catch { /* silent */ }
     };
 
     poll();
-    const id = setInterval(poll, 4000);
+    const id = setInterval(poll, 3000);
     return () => { cancelled = true; clearInterval(id); };
   }, [currentJobId, totalScenes]);
 
