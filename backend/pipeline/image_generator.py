@@ -56,6 +56,9 @@ async def generate_image(
         merged_negative = f"{merged_negative}, {negative_prompt}"
 
     # Build request payload matching Easy Diffusion's expected format
+    # IMPORTANT: always use a random seed so regenerations produce different results.
+    # SD_DEFAULT_PARAMS contains seed=42 as a placeholder; we override it here.
+    import random
     payload = {
         **SD_DEFAULT_PARAMS,
         "prompt": full_prompt,
@@ -64,6 +67,8 @@ async def generate_image(
         "width": width,
         "height": height,
         "session_id": session_id,
+        "seed": random.randint(0, 2**32 - 1),  # fresh random seed every call
+        "used_random_seed": True,
     }
 
     logger.info(f"Generating image: {prompt[:80]}...")
