@@ -122,10 +122,17 @@ const useStore = create((set, get) => ({
             clearInterval(pollInterval); 
           }
         }
-        else if (job.status === 'assembling' || job.status === 'completed') {
+        else if (['assembling', 'generating_audio', 'adding_captions', 'completed'].includes(job.status)) {
           set({ advancedStep: 'assemble' });
           if (job.status === 'completed') {
-            set({ isGenerating: false });
+            // Redirect to Jobs tab when finished
+            set({ 
+              isGenerating: false,
+              activeTab: 'jobs',
+              currentJobId: null,
+              mode: 'basic',
+              advancedStep: 'input'
+            });
             clearInterval(pollInterval);
           }
         }

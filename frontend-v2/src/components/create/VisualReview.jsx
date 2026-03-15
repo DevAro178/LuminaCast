@@ -275,16 +275,19 @@ export default function VisualReview() {
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-4">
             <h3 className="text-2xl font-display font-black">VISUAL REVIEW</h3>
-            {generatedCount !== null && generatedCount < totalScenes && (
+            {regeneratingScenes.size > 0 ? (
+              <span className="text-xs font-display font-black bg-accent/20 text-accent px-3 py-1 rounded-full tracking-widest">
+                REGENERATING {regeneratingScenes.size} VISUAL{regeneratingScenes.size !== 1 ? 'S' : ''}...
+              </span>
+            ) : generatedCount !== null && generatedCount < totalScenes ? (
               <span className="text-xs font-display font-black bg-accent/20 text-accent px-3 py-1 rounded-full tracking-widest">
                 {generatedCount}/{totalScenes} GENERATED
               </span>
-            )}
-            {generatedCount !== null && generatedCount >= totalScenes && (
+            ) : generatedCount !== null && generatedCount >= totalScenes ? (
               <span className="text-xs font-display font-black bg-green-500/20 text-green-400 px-3 py-1 rounded-full tracking-widest">
                 ✓ ALL {totalScenes} READY
               </span>
-            )}
+            ) : null}
           </div>
           <div className="flex gap-4">
             <Button variant="outline" className="px-6 py-2 text-xs font-display font-black tracking-widest uppercase" onClick={() => setAdvancedStep('script')} disabled={isGenerating}>

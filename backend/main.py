@@ -225,9 +225,9 @@ async def assemble_final_video(job_id: str, background_tasks: BackgroundTasks):
     if not job:
         raise HTTPException(404, "Job not found")
         
-    await db.update_job(job_id, approved_visuals=True)
+    await db.update_job(job_id, approved_visuals=True, status="assembling")
     background_tasks.add_task(assemble_job_video, job_id)
-    return {"status": "generating_audio"}
+    return {"status": "assembling"}
 
 @app.post("/api/v2/jobs/{job_id}/scenes/{scene_index}/regenerate_image")
 async def regenerate_scene_image(job_id: str, scene_index: int):
