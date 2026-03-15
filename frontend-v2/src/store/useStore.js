@@ -103,7 +103,7 @@ const useStore = create((set, get) => ({
         set({ status: job.status, progress: job.progress_pct });
 
         // Dynamic State Transitions
-        if (job.status === 'script_review') {
+        if (job.status === 'script_review' || job.status.includes('Drafted')) {
           const scenes = await jobsApi.getScenes(jobId);
           // Wait to hide loader until scenes are loaded to prevent flash
           set({ 
@@ -115,12 +115,15 @@ const useStore = create((set, get) => ({
           });
           clearInterval(pollInterval);
         } 
-        else if (job.status === 'generating_images' || job.status === 'visual_review') {
+        else if (job.status === 'generating_images' || job.status === 'visual_review' || job.status.includes('AI Visuals')) {
           set({ advancedStep: 'visuals' });
           if (job.status === 'visual_review') {
-            set({ isGenerating: false });
+            set({ isGenerating: false, status: 'idle' });
             clearInterval(pollInterval); 
           }
+        }
+        else if (['revising_script', 'Revising Script...'].includes(job.status)) {
+           set({ isGenerating: true, status: 'revising_script' });
         }
         else if (['assembling', 'generating_audio', 'adding_captions', 'completed'].includes(job.status)) {
           set({ advancedStep: 'assemble' });

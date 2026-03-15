@@ -252,7 +252,7 @@ export default function VisualReview() {
   };
 
   // ── Loading States ─────────────────────────────────────────────────────────
-  if (status === 'generating_images' || status === 'queued') {
+  if ((status === 'generating_images' || status === 'queued' || status.includes('AI Visuals')) && generatedCount === 0) {
     return (
       <div className="col-span-3 bento-card relative h-[400px]">
         <Loader title="GENERATING VISUALS..." message={`Creating scene images... (${progress}%)`} />
