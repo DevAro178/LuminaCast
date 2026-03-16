@@ -139,4 +139,29 @@ Transition to **LuminaCast Version 2** (Interactive Advanced/Basic Pipelines wit
 - **UX**: Removed the intrusive `prompt()` alert for AI revisions in favor of the automated "smart detect" logic.
 
 ---
+
+## 📅 March 16, 2026 - Phonetic Stability & Pipeline Resilience (V3 Finalization)
+
+### 🚀 Major Milestones
+- **Definitive Phonetic Decoupling**: Completely removed the LLM from the phonetic generation bottleneck.
+  - **The Problem**: LLMs consistently "over-phoneticized" common English, producing unnatural, broken speech.
+  - **The Solution**: Removed all phonetic instructions from prompts. The backend now automatically duplicates `narration_text` into `narration_audio` by default.
+  - **Manual Precision**: Preserved the "Phonetic Audio (TTS)" field in the UI, allowing users to provide surgical phonetic overrides for specific names or acronyms without AI interference.
+- **Smart Image Pool & Intelligent Reuse**: Implemented a visual caching layer to drastically reduce SDXL generation time.
+  - **Logic**: New `image_prompt` tags are compared against an `image_pool` table. If a tag overlap of **≥ 65%** is found, the system reuses the existing asset instead of generating a new one.
+  - **Manual Override**: Manual tag edits or regenerations bypass this pool (95% threshold) to ensure user intent is always honored.
+- **Frontend Resilience & State Synchronization**: Fixed "hanging" UI transitions caused by backend/frontend version mismatches.
+  - **Standardization**: Converted all backend human-readable statuses (e.g. "Revising Script...") to machine-readable snake_case (e.g. `revising_script`).
+  - **Resilience**: Updated `useStore.js` to handle both new snake_case and legacy strings (like "AI Visuals: X/Y"), ensuring the UI always transitions to the next stage regardless of minor API inconsistencies.
+
+### 🎨 UI/UX Excellence
+- **Live Visual Progress**: Updated `VisualReview.jsx` to support real-time card updates. In advanced mode, scenes now "pop in" with their generated images one by one as they finish, rather than waiting for the entire batch.
+- **Media Library Script Viewer**: Added a highly requested "VIEW SCRIPT" feature to the Jobs Dashboard. Users can now audit the captions and visual tags of any completed job in a clean modal.
+- **Bento Card Polish**: Fixed a regression where visual tag inputs in the review cards were read-only. They are now fully interactive.
+
+### 🛠️ Infrastructure & Database
+- **Robust Schema Migration**: Replaced the fragile `try/except` block in `database.py` with column-by-column `ALTER TABLE` checks. This prevents the system from skipping necessary migrations (like adding `narration_audio`) if other columns already exist.
+- **Git Sync Strategy**: Established a workflow where critical UI patches are pushed to `main` and immediately pulled to the EC2 instance to keep the production mirror in sync.
+
+---
 *End of Context Document*
