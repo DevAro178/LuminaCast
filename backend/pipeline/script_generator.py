@@ -31,8 +31,11 @@ IMPORTANT RULES:
 
 LONG_FORM_PROMPT = """Write a YouTube narration script about: "{topic}"
 
-Target: Long-form video (5-10 minutes when spoken). Write 120-150 sentences.
-Structure: Hook → Introduction → Main Points (Deep Dives & Context) → Reasoned Arguments → Call to Action
+Target: Long-form video (5-10 minutes when spoken).
+TOTAL LENGTH REQUIREMENT: You MUST write between 120 and 150 individual sentences. Each sentence becomes one scene.
+Structure: Hook → Introduction → Main Points (Deep Dives, Context, Examples) → Reasoned Arguments → Call to Action
+
+EXPANSION RULE: If the user provides a brief topic or a list of chapters, you MUST expand each point into 20-25 detailed scenes. Do not just summarize; provide depth, storytelling, and high-value psychological insights for every single scene.
 
 CRITICAL VISUAL CONSTRAINT:
 Generate approximately 75-80 distinct visuals maximum. You must map these across your 120-150 narrative scenes by STRATEGICALLY REUSING the exact same image_prompt strings for sequential or highly related points. This prevents the image server from overloading while maintaining a coherent visual narrative.
@@ -93,10 +96,11 @@ async def generate_script(topic: str, video_type: str = "long") -> dict:
     Returns:
         dict with 'title' and 'scenes' list
     """
-    prompt_template = LONG_FORM_PROMPT if video_type == "long" else SHORT_FORM_PROMPT
+    vtype = str(video_type).strip().lower()
+    prompt_template = LONG_FORM_PROMPT if vtype == "long" else SHORT_FORM_PROMPT
     user_prompt = prompt_template.format(topic=topic)
 
-    logger.info(f"Generating {video_type} script for topic: {topic}")
+    logger.info(f"Generating {vtype} script (mode: {'LONG' if vtype == 'long' else 'SHORT'}) for topic: {topic}")
 
     async with httpx.AsyncClient(timeout=300.0) as client:
         response = await client.post(

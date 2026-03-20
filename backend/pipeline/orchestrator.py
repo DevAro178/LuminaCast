@@ -49,7 +49,8 @@ async def generate_job_script(job_id: str, topic: str, video_type: str) -> dict:
             total_scenes=len(scenes),
         )
         # Force the transition status to 'script_review' if in advanced mode
-        if "advanced":
+        job = await db.get_job(job_id)
+        if job and job.get("workflow_mode") == "advanced":
             await db.update_job(job_id, status="script_review")
             
         logger.info(f"[{job_id}] Script generated: {len(scenes)} scenes")
