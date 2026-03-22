@@ -100,9 +100,13 @@ async def generate_script(topic: str, video_type: str = "long") -> dict:
     prompt_template = LONG_FORM_PROMPT if vtype == "long" else SHORT_FORM_PROMPT
     user_prompt = prompt_template.format(topic=topic)
 
-    logger.info(f"Generating {vtype} script (mode: {'LONG' if vtype == 'long' else 'SHORT'}) for topic: {topic}")
+    # Long-form needs ~15k-20k tokens for 120-150 scenes of JSON; short only needs ~2k-4k
+    token_limit = 32768 if vtype == "long" else 8192
+    timeout = 600.0 if vtype == "long" else 300.0
 
-    async with httpx.AsyncClient(timeout=300.0) as client:
+    logger.info(f"Generating {vtype} script (mode: {'LONG' if vtype == 'long' else 'SHORT'}, tokens: {token_limit}) for topic: {topic}")
+
+    async with httpx.AsyncClient(timeout=timeout) as client:
         response = await client.post(
             f"{OLLAMA_URL}/api/generate",
             json={
@@ -112,7 +116,7 @@ async def generate_script(topic: str, video_type: str = "long") -> dict:
                 "stream": False,
                 "options": {
                     "temperature": 0.7,
-                    "num_predict": 8192,
+                    "num_predict": token_limit,
                 }
             }
         )
