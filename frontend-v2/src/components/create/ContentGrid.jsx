@@ -70,10 +70,10 @@ export default function ContentGrid() {
           </div>
           
           <div className="col-span-2 bento-card relative overflow-hidden transition-all duration-500 flex flex-col justify-center">
-            {isGenerating && (status === 'generating_script' || status === 'queued') && (
+            {isGenerating && (status === 'generating_script' || status === 'queued' || status === 'generating_outline') && (
               <Loader 
                 title={mode === 'basic' ? "JOB CREATED!" : "DRAFTING SCRIPT..."}
-                message={mode === 'basic' ? "Redirecting to Dashboard..." : "Analyzing prompt and framing scenes..."}
+                message={status === 'generating_outline' ? "Structuring video chapters..." : (mode === 'basic' ? "Redirecting to Dashboard..." : "Analyzing prompt and framing scenes...")}
                 fullScreen={true}
               />
             )}

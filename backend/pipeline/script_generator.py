@@ -243,6 +243,11 @@ OUTLINE_PROMPT = """Create a detailed video outline for a YouTube deep-dive abou
 Target: 7-8 minute video. Structure the content into 5-8 chapters.
 Each chapter should have 2-4 sections that break down the key talking points.
 
+CRITICAL JSON RULES:
+1. DO NOT use double quotes (") inside your title or description strings. Use single quotes (') instead.
+2. Do not use special control characters like newlines (\n) inside your strings.
+3. Ensure the JSON is perfectly formatted and valid.
+
 Respond ONLY with valid JSON in this exact format, no markdown:
 {{
   "title": "Video title",
