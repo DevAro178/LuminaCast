@@ -144,7 +144,7 @@ async def mark_stuck_jobs_as_failed():
         await db.execute(
             """UPDATE jobs 
                SET status = 'failed', error_message = 'Job cancelled (server restarted)'
-               WHERE status NOT IN ('completed', 'failed', 'error')"""
+               WHERE status IN ('queued', 'generating_script', 'generating_outline', 'expanding_scenes', 'revising_script', 'generating_images', 'generating_audio', 'assembling', 'adding_captions')"""
         )
         await db.commit()
 
