@@ -71,17 +71,18 @@ Respond ONLY with valid JSON in this exact format, no markdown:
 
 
 def _clean_json_response(text: str) -> str:
-    """Extract JSON from LLM response, handling markdown code blocks."""
+    """Extract JSON from LLM response, handling markdown code blocks and conversational text."""
     text = text.strip()
-    # Remove markdown code blocks if present
-    if text.startswith("```"):
-        # Find the end of the first line (```json or ```)
-        first_newline = text.index("\n")
-        last_backticks = text.rfind("```")
-        if last_backticks > first_newline:
-            text = text[first_newline + 1:last_backticks].strip()
-        else:
-            text = text[first_newline + 1:].strip()
+    
+    # Try to find the first and last curly braces to extract just the JSON object
+    first_brace = text.find('{')
+    last_brace = text.rfind('}')
+    
+    if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+        # Extract everything from the first '{' to the last '}'
+        return text[first_brace:last_brace + 1].strip()
+    
+    # Fallback to returning the stripped text
     return text
 
 
