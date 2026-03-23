@@ -237,6 +237,13 @@ async def generate_job_visuals(job_id: str):
 
         for i, (scene, scene_rec) in enumerate(zip(scenes, db_scenes)):
             image_path = images_dir / f"scene_{i:03d}.jpg"
+            
+            if image_path.exists() and image_path.stat().st_size > 0:
+                logger.info(f"[{job_id}] Scene {i} image already exists on disk, skipping generation.")
+                image_paths.append(str(image_path))
+                await on_image_progress(i + 1, total)
+                continue
+                
             target_prompt = scene["image_prompt"]
             is_manual_override = bool(scene_rec["edited_tags"])
             similarity_threshold = 0.95 if is_manual_override else 0.65
