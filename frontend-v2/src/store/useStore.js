@@ -258,6 +258,17 @@ const useStore = create((set, get) => ({
       set({ isGenerating: false });
     }
   },
+
+  // Calls the backend endpoint to force-resume a cancelled or stuck job
+  forceRestartJob: async (jobId) => {
+    try {
+      await jobsApi.resumeJob(jobId);
+      // After hitting the endpoint, just use the existing resumeJob to open it
+      get().resumeJob(jobId);
+    } catch (err) {
+      console.error("Failed to force restart job:", err);
+    }
+  },
 }));
 
 export default useStore;

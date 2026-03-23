@@ -102,6 +102,19 @@ async def generate_speech_for_scenes(
 
     for i, scene in enumerate(scenes):
         audio_path = audio_dir / f"scene_{i:03d}.wav"
+        
+        if audio_path.exists() and audio_path.stat().st_size > 0:
+            logger.info(f"Audio already exists for scene {i}, skipping generation.")
+            duration = _get_wav_duration(audio_path)
+            results.append({
+                "audio_path": str(audio_path),
+                "duration": duration,
+                "timestamps": [],
+            })
+            if on_progress:
+                await on_progress(i + 1, total)
+            continue
+            
         try:
             result = await generate_speech(
                 text=scene.get("narration_audio", scene["narration_text"]),

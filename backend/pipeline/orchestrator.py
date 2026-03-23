@@ -447,3 +447,51 @@ async def regenerate_single_scene(job_id: str, scene_index: int, custom_tags: st
         logger.info(f"[{job_id}] Scene {scene_index} regenerated → {saved_path}")
     except Exception as e:
         logger.exception(f"[{job_id}] Failed to regenerate scene {scene_index}: {e}")
+
+async def resume_job(job_id: str):
+    """
+    Resumes a job from where it left off.
+    Checks the current status in the database and triggers the appropriate pipeline step.
+    """
+    job = await db.get_job(job_id)
+    if not job:
+        logger.error(f"[{job_id}] Cannot resume: Job not found.")
+        return
+        
+    status = job["status"]
+    logger.info(f"[{job_id}] Resuming job from status: {status}")
+
+    if job["workflow_mode"] == "basic":
+        # Basic mode just reruns from scratch if it failed
+        await run_legacy_pipeline(job_id, job["topic"], job["video_type"], job.get("voice_type", "male"))
+        return
+
+    # Advanced Mode Resume Logic
+    if status in ("generating_outline", "error"):
+        outline = await db.get_outline(job_id)
+        if not outline:
+            await generate_job_outline(job_id, job["topic"])
+        else:
+            logger.info(f"[{job_id}] Outline already exists, skipping to outline_review")
+            await db.update_job(job_id, status="outline_review")
+            
+    elif status in ("expanding_scenes", "outline_review"):
+        scenes = await db.get_scenes(job_id)
+        if not scenes:
+            await expand_outline_to_scenes(job_id)
+        else:
+            logger.info(f"[{job_id}] Scenes already exist, skipping to script_review")
+            await db.update_job(job_id, status="script_review")
+            
+    elif status in ("generating_images", "script_review"):
+        await generate_job_visuals(job_id)
+        
+    elif status in ("generating_audio", "visual_review", "visuals_review"):
+        # `assemble_job_video` handles both TTS generation and final video composite seamlessly
+        await assemble_job_video(job_id)
+        
+    elif status in ("assembling_video", "audio_review"):
+        await assemble_job_video(job_id)
+        
+    else:
+        logger.info(f"[{job_id}] Job state '{status}' does not need resuming.")

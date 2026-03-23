@@ -134,6 +134,25 @@ export default function JobsDashboard() {
                     RESUME
                   </Button>
                 )}
+                {!isPendingReview && job.status !== 'completed' && job.status !== 'error' && (
+                  <Button
+                    variant="outline"
+                    className="px-6 py-2 text-xs font-display font-black tracking-widest border-white/10 text-textSecondary hover:bg-white/10"
+                    onClick={() => useStore.getState().forceRestartJob(job.id)}
+                    title="Force restart if the server crashed"
+                  >
+                    RESTART
+                  </Button>
+                )}
+                {job.status === 'error' && (
+                  <Button
+                    variant="outline"
+                    className="px-6 py-2 text-xs font-display font-black tracking-widest border-red-400/40 text-red-400 hover:bg-red-400/10"
+                    onClick={() => useStore.getState().forceRestartJob(job.id)}
+                  >
+                    RETRY
+                  </Button>
+                )}
                 {job.status === 'completed' && (
                   <>
                     <Button

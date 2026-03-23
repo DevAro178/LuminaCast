@@ -165,6 +165,18 @@ async def draft_job_script(job_id: str, background_tasks: BackgroundTasks):
     return {"status": "generating_script"}
 
 
+@app.post("/api/v2/jobs/{job_id}/resume")
+async def resume_cancelled_job(job_id: str, background_tasks: BackgroundTasks):
+    """Resumes a cancelled or failed job from its last known pipeline stage."""
+    job = await db.get_job(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+    
+    from pipeline.orchestrator import resume_job
+    background_tasks.add_task(resume_job, job_id)
+    return {"status": "resuming"}
+
+
 # --- Outline Endpoints (Long-Form Only) ---
 
 class OutlineItemUpdate(BaseModel):
@@ -203,6 +215,9 @@ async def expand_job_outline(job_id: str, background_tasks: BackgroundTasks):
     job = await db.get_job(job_id)
     if not job:
         raise HTTPException(404, "Job not found")
+    
+    # Needs to be imported inside the scope or globally
+    from pipeline.orchestrator import expand_outline_to_scenes
     background_tasks.add_task(expand_outline_to_scenes, job_id)
     return {"status": "expanding_scenes"}
 

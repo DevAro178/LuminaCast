@@ -109,4 +109,9 @@ export const jobsApi = {
     const response = await api.post(`/api/v2/jobs/${jobId}/expand_outline`);
     return response.data;
   },
+
+  resumeJob: async (jobId) => {
+    const response = await api.post(`/api/v2/jobs/${jobId}/resume`);
+    return response.data;
+  },
 };
