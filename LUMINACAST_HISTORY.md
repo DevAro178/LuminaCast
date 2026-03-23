@@ -53,6 +53,14 @@ If modifying the codebase, **do not undo these fixes**:
 
 ## 5. Improvement Log (03/13/2026+)
 
+### Video Generation Architecture
+LuminaCast handles two distinct types of video generation:
+1.  **Short-Form / Basic Mode:** Single-shot LLM generation. The topic is sent to Mistral in one prompt, generating 7-17 scenes immediately.
+2.  **Long-Form / Advanced Mode (Iterative Expansion):** A 3-tier process to bypass LLM output token limits and generate 120-150 scenes:
+    - **Step 1:** Generate Outline (Chapters + Sections)
+    - **Step 2:** User reviews and approves Outline in the UI
+    - **Step 3:** Backend expands each section individually into 8-15 scenes, accumulating context, then merges them.
+
 ### Improvement 1: Smarter Script Prompts + Per-Scene Negative Prompts
 - **`config.py`**: Replaced generic negative prompt with proven animagine-xl-4.0 defaults.
 - **`script_generator.py`**: Updated prompts to include `negative_prompt` and enforce **Danbooru-style comma-separated tags** for `image_prompt`. This format is optimized for `animagine-xl-4.0`.
