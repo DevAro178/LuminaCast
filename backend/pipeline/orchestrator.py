@@ -221,30 +221,42 @@ async def generate_job_visuals(job_id: str):
         total = len(scenes)
         pool_images = await db.get_all_pool_images()
 
+        # Helper function for CPU-bound SequenceMatcher
+        def _find_best_match(target_prompt, pool_images, threshold):
+            import difflib
+            best_m = None
+            best_r = 0.0
+            for p_img in pool_images:
+                ratio = difflib.SequenceMatcher(None, target_prompt, p_img["image_tags"]).ratio()
+                if ratio > best_r:
+                    best_r = ratio
+                    best_m = p_img
+            if best_r >= threshold:
+                return best_m, best_r
+            return None, 0.0
+
         for i, (scene, scene_rec) in enumerate(zip(scenes, db_scenes)):
             image_path = images_dir / f"scene_{i:03d}.jpg"
             target_prompt = scene["image_prompt"]
             is_manual_override = bool(scene_rec["edited_tags"])
             similarity_threshold = 0.95 if is_manual_override else 0.65
 
-            best_match = None
-            best_ratio = 0.0
-            for p_img in pool_images:
-                ratio = difflib.SequenceMatcher(None, target_prompt, p_img["image_tags"]).ratio()
-                if ratio > best_ratio:
-                    best_ratio = ratio
-                    best_match = p_img
+            # Offload CPU-bound loop to a thread so it doesn't block the asyncio event loop
+            best_match, best_ratio = await asyncio.to_thread(
+                _find_best_match, target_prompt, pool_images, similarity_threshold
+            )
 
-            if best_match and best_ratio >= similarity_threshold:
+            if best_match:
                 logger.info(f"[{job_id}] Scene {i} reused image from pool (similarity: {best_ratio:.2f})")
                 try:
-                    shutil.copy2(best_match["file_path"], image_path)
+                    # Offload synchronous disk I/O to a thread
+                    await asyncio.to_thread(shutil.copy2, best_match["file_path"], image_path)
                     image_paths.append(str(image_path))
                 except Exception as e:
                     logger.error(f"Failed to copy pool image: {e}")
                     best_match = None
 
-            if not best_match or best_ratio < similarity_threshold:
+            if not best_match:
                 try:
                     path = await generate_image(
                         prompt=target_prompt,
