@@ -19,7 +19,8 @@ from pipeline.orchestrator import (
     generate_job_script, 
     generate_job_visuals, 
     assemble_job_video,
-    run_legacy_pipeline
+    run_legacy_pipeline,
+    expand_outline_to_scenes
 )
 
 # Logging setup
@@ -160,7 +161,50 @@ async def draft_job_script(job_id: str, background_tasks: BackgroundTasks):
         raise HTTPException(404, "Job not found")
         
     background_tasks.add_task(generate_job_script, job_id, job["topic"], job["video_type"])
+    # For long-form advanced, the status will be 'generating_outline' instead of 'generating_script'
     return {"status": "generating_script"}
+
+
+# --- Outline Endpoints (Long-Form Only) ---
+
+class OutlineItemUpdate(BaseModel):
+    id: str
+    title: str
+    description: str | None = None
+
+class OutlineUpdateRequest(BaseModel):
+    items: list[OutlineItemUpdate]
+
+@app.get("/api/v2/jobs/{job_id}/outline")
+async def get_job_outline(job_id: str):
+    """Fetch the outline (chapters + sections) for a job."""
+    job = await db.get_job(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+    outline = await db.get_outline(job_id)
+    return outline
+
+@app.put("/api/v2/jobs/{job_id}/outline")
+async def update_job_outline(job_id: str, request: OutlineUpdateRequest):
+    """Save user edits to the outline."""
+    job = await db.get_job(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+    for item in request.items:
+        update_data = {"title": item.title}
+        if item.description is not None:
+            update_data["description"] = item.description
+        await db.update_outline_item(item.id, **update_data)
+    return {"status": "success"}
+
+@app.post("/api/v2/jobs/{job_id}/expand_outline")
+async def expand_job_outline(job_id: str, background_tasks: BackgroundTasks):
+    """Approve outline and trigger section-by-section scene expansion."""
+    job = await db.get_job(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+    background_tasks.add_task(expand_outline_to_scenes, job_id)
+    return {"status": "expanding_scenes"}
 
 @app.get("/api/v2/jobs/{job_id}/scenes", response_model=list[dict])
 async def get_job_scenes(job_id: str):

@@ -89,4 +89,24 @@ export const jobsApi = {
     });
     return response.data;
   },
+
+  // --- Outline (Long-Form Only) ---
+
+  // Fetch outline (chapters + sections)
+  getOutline: async (jobId) => {
+    const response = await api.get(`/api/v2/jobs/${jobId}/outline`);
+    return response.data;
+  },
+
+  // Save user edits to outline
+  updateOutline: async (jobId, items) => {
+    const response = await api.put(`/api/v2/jobs/${jobId}/outline`, { items });
+    return response.data;
+  },
+
+  // Approve outline and trigger scene expansion
+  expandOutline: async (jobId) => {
+    const response = await api.post(`/api/v2/jobs/${jobId}/expand_outline`);
+    return response.data;
+  },
 };

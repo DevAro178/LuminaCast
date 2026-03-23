@@ -232,3 +232,165 @@ async def revise_script(topic: str, feedback: str = "", current_scenes: list = N
             scene["narration_audio"] = scene["narration_text"]
 
     return script_data
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# ITERATIVE EXPANSION (Long-Form Only)
+# ────────────────────────────────────────────────────────────────────────────
+
+OUTLINE_PROMPT = """Create a detailed video outline for a YouTube deep-dive about: "{topic}"
+
+Target: 7-8 minute video. Structure the content into 5-8 chapters.
+Each chapter should have 2-4 sections that break down the key talking points.
+
+Respond ONLY with valid JSON in this exact format, no markdown:
+{{
+  "title": "Video title",
+  "chapters": [
+    {{
+      "title": "Chapter title",
+      "description": "1-2 sentence summary of what this chapter covers",
+      "sections": [
+        {{
+          "title": "Section title",
+          "description": "1-2 sentence summary of the key point for this section"
+        }}
+      ]
+    }}
+  ]
+}}"""
+
+SECTION_EXPAND_PROMPT = """You are writing narration scenes for ONE section of a larger YouTube video script.
+
+Video Topic: "{topic}"
+Chapter: "{chapter_title}" — {chapter_desc}
+Section: "{section_title}" — {section_desc}
+
+Context (previous sections covered):
+{context}
+
+Write 8-15 narration sentences for THIS SECTION ONLY. Each sentence becomes one scene.
+- Make it conversational and engaging, suitable for voiceover
+- Provide Danbooru-style anime image tags for each scene
+- Keep sentences concise (3-8 seconds when spoken)
+- Build on the context of previous sections without repeating them
+
+Respond ONLY with valid JSON in this exact format, no markdown:
+{{
+  "scenes": [
+    {{
+      "narration_text": "One grammatically correct sentence.",
+      "image_prompt": "Comma-separated visual tags (Danbooru style).",
+      "negative_prompt": "Scene-specific things to exclude."
+    }}
+  ]
+}}"""
+
+
+async def generate_outline(topic: str) -> dict:
+    """
+    Generate a chapter + section outline for a long-form video.
+    This is a compact call (~1-2k tokens output) well within Mistral's limits.
+    """
+    user_prompt = OUTLINE_PROMPT.format(topic=topic)
+    logger.info(f"Generating outline for topic: {topic}")
+
+    async with httpx.AsyncClient(timeout=300.0) as client:
+        response = await client.post(
+            f"{OLLAMA_URL}/api/generate",
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": user_prompt,
+                "system": SYSTEM_PROMPT,
+                "stream": False,
+                "options": {
+                    "temperature": 0.7,
+                    "num_predict": 4096,
+                }
+            }
+        )
+        response.raise_for_status()
+        result = response.json()
+
+    raw_text = result.get("response", "")
+    cleaned = _clean_json_response(raw_text)
+
+    try:
+        outline_data = json.loads(cleaned)
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse outline JSON: {e}")
+        logger.error(f"Raw response: {raw_text[:500]}")
+        raise ValueError(f"LLM returned invalid JSON for outline: {e}")
+
+    if "chapters" not in outline_data:
+        raise ValueError("Outline missing 'chapters' key")
+
+    chapters = outline_data["chapters"]
+    if not isinstance(chapters, list) or len(chapters) == 0:
+        raise ValueError("Outline has no chapters")
+
+    total_sections = sum(len(ch.get("sections", [])) for ch in chapters)
+    logger.info(f"Generated outline: {len(chapters)} chapters, {total_sections} sections")
+    return outline_data
+
+
+async def expand_section_to_scenes(
+    topic: str,
+    chapter_title: str,
+    chapter_desc: str,
+    section_title: str,
+    section_desc: str,
+    context: str = ""
+) -> list[dict]:
+    """
+    Expand a single section into 8-15 narration scenes.
+    Each call is small (~2k tokens output) — well within Mistral's comfort zone.
+    """
+    user_prompt = SECTION_EXPAND_PROMPT.format(
+        topic=topic,
+        chapter_title=chapter_title,
+        chapter_desc=chapter_desc,
+        section_title=section_title,
+        section_desc=section_desc,
+        context=context or "This is the first section."
+    )
+
+    logger.info(f"Expanding section: {chapter_title} > {section_title}")
+
+    async with httpx.AsyncClient(timeout=300.0) as client:
+        response = await client.post(
+            f"{OLLAMA_URL}/api/generate",
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": user_prompt,
+                "system": SYSTEM_PROMPT,
+                "stream": False,
+                "options": {
+                    "temperature": 0.7,
+                    "num_predict": 4096,
+                }
+            }
+        )
+        response.raise_for_status()
+        result = response.json()
+
+    raw_text = result.get("response", "")
+    cleaned = _clean_json_response(raw_text)
+
+    try:
+        section_data = json.loads(cleaned)
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse section scenes JSON: {e}")
+        raise ValueError(f"LLM returned invalid JSON for section expansion: {e}")
+
+    scenes = section_data.get("scenes", [])
+
+    for scene in scenes:
+        # Mirror narration_text to narration_audio
+        scene["narration_audio"] = scene.get("narration_text", "")
+        if "negative_prompt" not in scene:
+            scene["negative_prompt"] = ""
+
+    logger.info(f"Expanded section '{section_title}' into {len(scenes)} scenes")
+    return scenes
+

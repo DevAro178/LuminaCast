@@ -4,6 +4,7 @@ import { jobsApi } from '../../api/jobs';
 import Button from '../ui/Button';
 import Select from '../ui/Select';
 import Loader from '../ui/Loader';
+import OutlineReview from './OutlineReview';
 import ScriptReview from './ScriptReview';
 import VisualReview from './VisualReview';
 import AssemblyView from './AssemblyView';
@@ -88,14 +89,16 @@ export default function ContentGrid() {
             </p>
             
             <div className="flex gap-4 mb-4 relative z-10">
-              <Select 
-                value={videoType} 
-                onChange={setVideoType}
-                options={[
-                  { value: 'short', label: 'Short Video (30-60s)' },
-                  { value: 'long', label: 'Long Video (5-10m)' }
-                ]}
-              />
+              {mode === 'advanced' && (
+                <Select 
+                  value={videoType} 
+                  onChange={setVideoType}
+                  options={[
+                    { value: 'short', label: 'Short Video (30-60s)' },
+                    { value: 'long', label: 'Long Video (~7-8m)' }
+                  ]}
+                />
+              )}
               <Select 
                 value={voiceType} 
                 onChange={setVoiceType}
@@ -125,6 +128,8 @@ export default function ContentGrid() {
             </div>
           </div>
         </>
+      ) : advancedStep === 'outline' ? (
+        <OutlineReview />
       ) : advancedStep === 'script' ? (
         <ScriptReview />
       ) : advancedStep === 'visuals' ? (

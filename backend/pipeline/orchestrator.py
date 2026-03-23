@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 
 import database as db
 from config import JOBS_DIR
-from pipeline.script_generator import generate_script
+from pipeline.script_generator import generate_script, generate_outline, expand_section_to_scenes
 from pipeline.image_generator import generate_image, _create_fallback_image
 from pipeline.tts_engine import generate_speech_for_scenes
 from pipeline.caption_generator import generate_captions_from_timestamps
@@ -24,12 +24,22 @@ logger = logging.getLogger(__name__)
 async def generate_job_script(job_id: str, topic: str, video_type: str) -> dict:
     """
     Step 1: Generate the narrative script and scene breakdowns using the LLM.
-    Returns the script data dictionary.
+    For long-form advanced mode, this generates an OUTLINE instead (iterative expansion).
+    For short-form, this generates scenes directly (unchanged behavior).
     """
     job_dir = JOBS_DIR / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
     
+    job = await db.get_job(job_id)
+    vtype = str(video_type).strip().lower()
+    is_long_advanced = vtype == "long" and job and job.get("workflow_mode") == "advanced"
+    
     try:
+        if is_long_advanced:
+            # Long-form advanced: generate outline (chapters + sections) for user approval
+            return await generate_job_outline(job_id, topic)
+        
+        # Short-form or basic: generate scenes directly (existing behavior)
         await db.update_job(job_id, status="generating_script", progress_pct=5)
         logger.info(f"[{job_id}] Step 1: Generating script...")
 
@@ -48,16 +58,128 @@ async def generate_job_script(job_id: str, topic: str, video_type: str) -> dict:
             progress_pct=15,
             total_scenes=len(scenes),
         )
-        # Force the transition status to 'script_review' if in advanced mode
-        job = await db.get_job(job_id)
-        if job and job.get("workflow_mode") == "advanced":
-            await db.update_job(job_id, status="script_review")
             
         logger.info(f"[{job_id}] Script generated: {len(scenes)} scenes")
         return script_data
         
     except Exception as e:
         logger.exception(f"[{job_id}] Script generation failed: {e}")
+        await db.update_job(job_id, status="error", error_message=str(e))
+        raise
+
+
+async def generate_job_outline(job_id: str, topic: str) -> dict:
+    """
+    Step 1a (Long-form only): Generate chapters + sections outline for user approval.
+    """
+    try:
+        await db.update_job(job_id, status="generating_outline", progress_pct=5)
+        logger.info(f"[{job_id}] Step 1a: Generating outline...")
+
+        outline_data = await generate_outline(topic)
+
+        # Save outline to file for reference
+        job_dir = JOBS_DIR / job_id
+        job_dir.mkdir(parents=True, exist_ok=True)
+        outline_path = job_dir / "outline.json"
+        outline_path.write_text(json.dumps(outline_data, indent=2), encoding="utf-8")
+
+        # Save to DB
+        await db.delete_outline_for_job(job_id)  # Clear any previous outline
+        await db.create_outline_items(job_id, outline_data["chapters"])
+        await db.update_job(job_id, status="outline_review", progress_pct=10)
+
+        total_sections = sum(len(ch.get("sections", [])) for ch in outline_data["chapters"])
+        logger.info(f"[{job_id}] Outline generated: {len(outline_data['chapters'])} chapters, {total_sections} sections")
+        return outline_data
+
+    except Exception as e:
+        logger.exception(f"[{job_id}] Outline generation failed: {e}")
+        await db.update_job(job_id, status="error", error_message=str(e))
+        raise
+
+
+async def expand_outline_to_scenes(job_id: str) -> dict:
+    """
+    Step 1b (Long-form only): Expand approved outline into full scenes.
+    Makes one LLM call per section, accumulating context as it goes.
+    """
+    try:
+        job = await db.get_job(job_id)
+        topic = job["topic"]
+        
+        await db.update_job(job_id, status="expanding_scenes", progress_pct=10)
+        logger.info(f"[{job_id}] Step 1b: Expanding outline to scenes...")
+
+        # Get the outline from DB and rebuild chapter/section structure
+        outline_items = await db.get_outline(job_id)
+        chapters = []
+        current_chapter = None
+        for item in outline_items:
+            if item["type"] == "chapter":
+                current_chapter = {
+                    "title": item["title"],
+                    "description": item.get("description", ""),
+                    "sections": []
+                }
+                chapters.append(current_chapter)
+            elif item["type"] == "section" and current_chapter is not None:
+                current_chapter["sections"].append({
+                    "title": item["title"],
+                    "description": item.get("description", "")
+                })
+
+        # Count total sections for progress tracking
+        total_sections = sum(len(ch["sections"]) for ch in chapters)
+        completed_sections = 0
+        all_scenes = []
+        context_parts = []
+
+        for chapter in chapters:
+            for section in chapter["sections"]:
+                # Build running context from previous sections
+                context = "\n".join(context_parts[-5:]) if context_parts else ""
+
+                scenes = await expand_section_to_scenes(
+                    topic=topic,
+                    chapter_title=chapter["title"],
+                    chapter_desc=chapter["description"],
+                    section_title=section["title"],
+                    section_desc=section["description"],
+                    context=context
+                )
+                all_scenes.extend(scenes)
+
+                # Add to context for next section
+                section_summary = f"- {chapter['title']} > {section['title']}: {len(scenes)} scenes covering {section['description']}"
+                context_parts.append(section_summary)
+
+                completed_sections += 1
+                pct = 10 + int((completed_sections / total_sections) * 5)  # 10% → 15%
+                await db.update_job(job_id, progress_pct=pct, status=f"expanding_scenes")
+                logger.info(f"[{job_id}] Expanded section {completed_sections}/{total_sections}: {len(scenes)} scenes")
+
+        # Save the full scene list to DB
+        await db.delete_scenes_for_job(job_id)
+        await db.create_scenes(job_id, all_scenes)
+
+        # Save to file for reference
+        job_dir = JOBS_DIR / job_id
+        script_data = {"title": topic, "scenes": all_scenes}
+        script_path = job_dir / "script.json"
+        script_path.write_text(json.dumps(script_data, indent=2), encoding="utf-8")
+
+        await db.update_job(
+            job_id,
+            status="script_review",
+            progress_pct=15,
+            total_scenes=len(all_scenes),
+        )
+        logger.info(f"[{job_id}] Outline expanded: {len(all_scenes)} total scenes from {total_sections} sections")
+        return script_data
+
+    except Exception as e:
+        logger.exception(f"[{job_id}] Outline expansion failed: {e}")
         await db.update_job(job_id, status="error", error_message=str(e))
         raise
 

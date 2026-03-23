@@ -56,6 +56,18 @@ async def init_db():
                 created_at TEXT NOT NULL
             )
         """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS outline (
+                id TEXT PRIMARY KEY,
+                job_id TEXT NOT NULL,
+                chapter_index INTEGER NOT NULL,
+                section_index INTEGER,
+                title TEXT NOT NULL,
+                description TEXT,
+                type TEXT NOT NULL DEFAULT 'chapter',
+                FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+            )
+        """)
         # Schema Migration: Add columns to existing tables if they omit them
         migration_queries = [
             "ALTER TABLE jobs ADD COLUMN workflow_mode TEXT NOT NULL DEFAULT 'basic'",
@@ -209,3 +221,56 @@ async def get_all_pool_images() -> list[dict]:
         async with db.execute("SELECT * FROM image_pool ORDER BY created_at DESC") as cursor:
             rows = await cursor.fetchall()
             return [dict(row) for row in rows]
+
+
+# --- Outline Operations ---
+
+async def create_outline_items(job_id: str, chapters: list[dict]):
+    """Bulk insert chapters and sections for a job's outline."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        for ch_idx, chapter in enumerate(chapters):
+            ch_id = f"{job_id}-ch{ch_idx:02d}"
+            await db.execute(
+                """INSERT INTO outline (id, job_id, chapter_index, section_index, title, description, type)
+                   VALUES (?, ?, ?, NULL, ?, ?, 'chapter')""",
+                (ch_id, job_id, ch_idx, chapter["title"], chapter.get("description", ""))
+            )
+            for sec_idx, section in enumerate(chapter.get("sections", [])):
+                sec_id = f"{job_id}-ch{ch_idx:02d}-s{sec_idx:02d}"
+                await db.execute(
+                    """INSERT INTO outline (id, job_id, chapter_index, section_index, title, description, type)
+                       VALUES (?, ?, ?, ?, ?, ?, 'section')""",
+                    (sec_id, job_id, ch_idx, sec_idx, section["title"], section.get("description", ""))
+                )
+        await db.commit()
+
+
+async def get_outline(job_id: str) -> list[dict]:
+    """Get all outline items for a job, ordered by chapter then section."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM outline WHERE job_id = ? ORDER BY chapter_index, section_index", (job_id,)
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
+
+
+async def update_outline_item(item_id: str, **kwargs):
+    """Update outline item fields dynamically."""
+    if not kwargs:
+        return
+    set_clause = ", ".join(f"{k} = ?" for k in kwargs)
+    values = list(kwargs.values()) + [item_id]
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            f"UPDATE outline SET {set_clause} WHERE id = ?", values
+        )
+        await db.commit()
+
+
+async def delete_outline_for_job(job_id: str):
+    """Delete all outline items associated with a job."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("DELETE FROM outline WHERE job_id = ?", (job_id,))
+        await db.commit()

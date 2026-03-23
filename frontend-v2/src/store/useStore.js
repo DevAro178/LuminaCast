@@ -11,7 +11,7 @@ const useStore = create((set, get) => ({
   setMode: (newMode) => set({ mode: newMode, advancedStep: 'input' }),
   
   // Advanced Pipeline Step
-  advancedStep: 'input', // 'input', 'script', 'visuals', 'assemble'
+  advancedStep: 'input', // 'input', 'outline', 'script', 'visuals', 'assemble'
   setAdvancedStep: (step) => set({ advancedStep: step }),
 
   // Job Configuration
@@ -48,22 +48,30 @@ const useStore = create((set, get) => ({
   scriptScenes: [],
   setScriptScenes: (scenes) => set({ scriptScenes: scenes }),
   
+  // Outline Data State
+  outlineData: [],
+  setOutlineData: (data) => set({ outlineData: data }),
+  
   // Actions
   startJob: async () => {
     const { topicInput, videoType, voiceType, mode } = get();
     if (!topicInput) return;
 
+    // Force videoType to short in basic mode
+    const actualVideoType = mode === 'basic' ? 'short' : videoType;
+
     // Set generating BEFORE calling API to prevent flicker
-    set({ isGenerating: true, progress: 0, status: 'queued', advancedStep: 'input' });
+    set({ isGenerating: true, progress: 0, status: 'queued', advancedStep: 'input', videoType: actualVideoType });
 
     try {
-      const { job_id } = await jobsApi.createJob(topicInput, videoType, voiceType, mode);
+      const { job_id } = await jobsApi.createJob(topicInput, actualVideoType, voiceType, mode);
       set({ currentJobId: job_id });
 
       if (mode === 'advanced') {
-        // Step 1: Draft script
+        // Step 1: Draft script (or outline for long-form)
         await jobsApi.draftScript(job_id);
-        set({ status: 'generating_script' });
+        const status = videoType === 'long' ? 'generating_outline' : 'generating_script';
+        set({ status });
         get().startPolling(job_id);
       } else {
         // Basic mode: redirect to jobs page immediately
@@ -103,7 +111,17 @@ const useStore = create((set, get) => ({
         set({ status: job.status, progress: job.progress_pct });
 
         // Dynamic State Transitions
-        if (job.status === 'script_review' || job.status.includes('Drafted')) {
+        if (job.status === 'outline_review') {
+          const outline = await jobsApi.getOutline(jobId);
+          set({
+            outlineData: outline,
+            advancedStep: 'outline',
+            isGenerating: false,
+            status: 'idle'
+          });
+          clearInterval(pollInterval);
+        }
+        else if (job.status === 'script_review' || job.status.includes('Drafted')) {
           const scenes = await jobsApi.getScenes(jobId);
           // Wait to hide loader until scenes are loaded to prevent flash
           set({ 
@@ -124,6 +142,9 @@ const useStore = create((set, get) => ({
         }
         else if (['revising_script', 'Revising Script...'].includes(job.status)) {
            set({ isGenerating: true, status: 'revising_script' });
+        }
+        else if (job.status === 'expanding_scenes') {
+           set({ isGenerating: true, status: 'expanding_scenes' });
         }
         else if (['assembling', 'generating_audio', 'adding_captions', 'completed'].includes(job.status)) {
           set({ advancedStep: 'assemble' });
@@ -149,6 +170,21 @@ const useStore = create((set, get) => ({
         set({ isGenerating: false });
       }
     }, 2000);
+  },
+
+  approveOutline: async (editedItems) => {
+    const { currentJobId } = get();
+    set({ isGenerating: true, status: 'expanding_scenes' });
+    try {
+      if (editedItems && editedItems.length > 0) {
+        await jobsApi.updateOutline(currentJobId, editedItems);
+      }
+      await jobsApi.expandOutline(currentJobId);
+      get().startPolling(currentJobId);
+    } catch (error) {
+      console.error("Failed to approve outline:", error);
+      set({ isGenerating: false, status: 'idle' });
+    }
   },
 
   saveScriptEdits: async () => {
@@ -186,7 +222,15 @@ const useStore = create((set, get) => ({
       const job = await jobsApi.getJobStatus(jobId);
       set({ status: job.status, progress: job.progress_pct, videoType: job.video_type });
 
-      if (job.status === 'script_review') {
+      if (job.status === 'outline_review') {
+        const outline = await jobsApi.getOutline(jobId);
+        set({
+          outlineData: outline,
+          advancedStep: 'outline',
+          isGenerating: false,
+          status: 'idle',
+        });
+      } else if (job.status === 'script_review') {
         const scenes = await jobsApi.getScenes(jobId);
         set({
           scriptScenes: scenes,
@@ -202,9 +246,9 @@ const useStore = create((set, get) => ({
           advancedStep: 'visuals',
           isGenerating: false,
         });
-      } else if (job.status === 'generating_images' || job.status === 'generating_script') {
+      } else if (job.status === 'generating_images' || job.status === 'generating_script' || job.status === 'generating_outline' || job.status === 'expanding_scenes') {
         // Still running — enter focus mode and let polling handle transitions
-        set({ advancedStep: 'visuals', isGenerating: true });
+        set({ advancedStep: 'input', isGenerating: true });
         get().startPolling(jobId);
       } else {
         set({ isGenerating: false, advancedStep: 'input' });
