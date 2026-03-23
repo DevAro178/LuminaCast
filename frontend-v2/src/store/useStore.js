@@ -246,8 +246,13 @@ const useStore = create((set, get) => ({
           advancedStep: 'visuals',
           isGenerating: false,
         });
-      } else if (job.status === 'generating_images' || job.status === 'generating_script' || job.status === 'generating_outline' || job.status === 'expanding_scenes') {
-        // Still running — enter focus mode and let polling handle transitions
+      } else if (job.status === 'generating_images') {
+        set({ advancedStep: 'visuals', isGenerating: true });
+        get().startPolling(jobId);
+      } else if (job.status === 'expanding_scenes') {
+        set({ advancedStep: 'outline', isGenerating: true });
+        get().startPolling(jobId);
+      } else if (job.status === 'generating_script' || job.status === 'generating_outline' || job.status === 'queued') {
         set({ advancedStep: 'input', isGenerating: true });
         get().startPolling(jobId);
       } else {
