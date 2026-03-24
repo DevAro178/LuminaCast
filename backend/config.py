@@ -7,8 +7,9 @@ from pathlib import Path
 
 # --- Paths ---
 BASE_DIR = Path(__file__).resolve().parent
-JOBS_DIR = BASE_DIR / "jobs"
-DB_PATH = BASE_DIR / "spinning_photon.db"
+PROJECT_ROOT = BASE_DIR.parent
+JOBS_DIR = PROJECT_ROOT / "jobs"
+DB_PATH = PROJECT_ROOT / "lumina.db"
 
 # Ensure jobs directory exists
 JOBS_DIR.mkdir(exist_ok=True)

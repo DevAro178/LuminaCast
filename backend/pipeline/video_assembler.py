@@ -56,6 +56,7 @@ def assemble_video(
     caption_path: str | None,
     output_path: str | Path,
     video_type: str = "long",
+    progress_callback: callable = None,
 ) -> str:
     """
     Assemble the final video from scenes, images, audio, and captions.
@@ -67,6 +68,7 @@ def assemble_video(
         caption_path: Path to ASS subtitle file (or None)
         output_path: Path to save the final .mp4
         video_type: 'long' or 'short'
+        progress_callback: Optional callable for percent updates
 
     Returns:
         Path to the final video file
@@ -88,8 +90,12 @@ def assemble_video(
     for i, (scene, tts, img_path) in enumerate(zip(scenes, tts_results, image_paths)):
         if i % 10 == 0:
             logger.info(f"Processing scene clips: {i}/{len(scenes)}...")
+            if progress_callback:
+                # Map assembly progress (0-100%) to the 82%-98% job progress range
+                assembly_pct = (i / len(scenes)) * 16.0
+                progress_callback(82 + int(assembly_pct))
             
-        # Ensure image path has .jpg extension (since we just changed it)
+        # Ensure image path has .jpg extension
         img_path = str(img_path).replace(".png", ".jpg")
         duration = tts["duration"]
         audio_path = tts["audio_path"]
@@ -102,7 +108,6 @@ def assemble_video(
         SCENE_PAUSE = 0.5
 
         # Create image clip
-        # FIX: Add CROSSFADE_DURATION to visual length so overlapping doesn't desync the pipeline
         visual_duration = duration + SCENE_PAUSE + (CROSSFADE_DURATION if CROSSFADE_DURATION > 0 else 0)
         
         img_clip = (
@@ -130,17 +135,12 @@ def assemble_video(
 
     # Concatenate scenes with crossfade transitions
     if len(scene_clips) > 1 and CROSSFADE_DURATION > 0:
-        final_video = concatenate_videoclips(
-            scene_clips,
-            method="compose",
-            padding=-CROSSFADE_DURATION,
-        )
-        # Apply crossfade: each clip fades in
         faded_clips = []
         for i, clip in enumerate(scene_clips):
             if i > 0:
                 clip = clip.with_effects([vfx.CrossFadeIn(CROSSFADE_DURATION)])
             faded_clips.append(clip)
+        
         final_video = concatenate_videoclips(
             faded_clips,
             method="compose",
@@ -149,10 +149,9 @@ def assemble_video(
     else:
         final_video = concatenate_videoclips(scene_clips)
 
-    # Composite audio
-    if audio_clips:
-        combined_audio = CompositeAudioClip(audio_clips)
-        final_video = final_video.with_audio(combined_audio)
+    # Attach Audio
+    final_audio = CompositeAudioClip(audio_clips)
+    final_video = final_video.with_audio(final_audio)
 
     # Write output with subtitle burn-in if available
     ffmpeg_params = ["-c:v", "libx264", "-preset", "medium", "-crf", "23"]
@@ -165,13 +164,14 @@ def assemble_video(
             "-vf", f"ass='{safe_caption_path}'"
         ])
 
-    logger.info(f"Writing video to {output_path}...")
+    logger.info(f"Writing final MP4 to {output_path}...")
     final_video.write_videofile(
         str(output_path),
         fps=VIDEO_FPS,
         codec="libx264",
         audio_codec="aac",
         ffmpeg_params=ffmpeg_params,
+        threads=4,
         logger=None,  # Suppress moviepy's verbose output
     )
 

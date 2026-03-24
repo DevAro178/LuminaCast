@@ -352,6 +352,12 @@ async def assemble_job_video(job_id: str):
         logger.info(f"[{job_id}] Step 3.3: Assembling video...")
 
         output_path = job_dir / "output.mp4"
+        
+        # Capture current event loop for threadsafe callback
+        main_loop = asyncio.get_running_loop()
+        async def update_progress(p):
+            await db.update_job(job_id, progress_pct=p)
+
         await asyncio.to_thread(
             assemble_video,
             scenes=scenes,
@@ -360,6 +366,7 @@ async def assemble_job_video(job_id: str):
             caption_path=str(caption_path),
             output_path=output_path,
             video_type=video_type,
+            progress_callback=lambda p: asyncio.run_coroutine_threadsafe(update_progress(p), main_loop)
         )
 
         # ---- Done ----

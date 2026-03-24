@@ -363,10 +363,10 @@ async def get_job_script(job_id: str):
 
 if __name__ == "__main__":
     import uvicorn
+    # Set reload=False for stability during long-running video generation
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=8000,
-        reload=True,
-        reload_excludes=["jobs/*", "*.db", "temp/*"],
+        reload=False,
     )
