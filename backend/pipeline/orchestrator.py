@@ -352,7 +352,8 @@ async def assemble_job_video(job_id: str):
         logger.info(f"[{job_id}] Step 3.3: Assembling video...")
 
         output_path = job_dir / "output.mp4"
-        assemble_video(
+        await asyncio.to_thread(
+            assemble_video,
             scenes=scenes,
             tts_results=tts_results,
             image_paths=image_paths,

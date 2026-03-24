@@ -86,6 +86,9 @@ def assemble_video(
     cumulative_time = 0.0
 
     for i, (scene, tts, img_path) in enumerate(zip(scenes, tts_results, image_paths)):
+        if i % 10 == 0:
+            logger.info(f"Processing scene clips: {i}/{len(scenes)}...")
+            
         # Ensure image path has .jpg extension (since we just changed it)
         img_path = str(img_path).replace(".png", ".jpg")
         duration = tts["duration"]

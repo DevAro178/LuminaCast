@@ -105,9 +105,11 @@ const useStore = create((set, get) => ({
   },
 
   startPolling: (jobId) => {
+    let failureCount = 0;
     const pollInterval = setInterval(async () => {
       try {
         const job = await jobsApi.getJobStatus(jobId);
+        failureCount = 0; // Reset on success
         set({ status: job.status, progress: job.progress_pct });
 
         // Dynamic State Transitions
@@ -165,9 +167,12 @@ const useStore = create((set, get) => ({
           clearInterval(pollInterval);
         }
       } catch (error) {
-        console.error("Polling error:", error);
-        clearInterval(pollInterval);
-        set({ isGenerating: false });
+        failureCount++;
+        console.error(`Polling error (attempt ${failureCount}):`, error);
+        if (failureCount > 3) {
+          clearInterval(pollInterval);
+          set({ isGenerating: false });
+        }
       }
     }, 2000);
   },
