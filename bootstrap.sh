@@ -27,12 +27,14 @@ rm -rf /tmp/* || true
 # 2. Setup NVMe Storage
 # ----------------------------
 if [ -b "$DEVICE" ]; then
-    echo "💾 Formatting NVMe device $DEVICE..."
-    mkfs.ext4 -F $DEVICE
+    if mount | grep -q "$DEVICE"; then
+        echo "💾 $DEVICE is already mounted. Skipping format."
+    else
+        echo "💾 Formatting NVMe device $DEVICE..."
+        mkfs.ext4 -F $DEVICE
 
-    echo "📂 Mounting NVMe to $MOUNT_POINT..."
-    mkdir -p $MOUNT_POINT
-    if ! mount | grep -q $MOUNT_POINT; then
+        echo "📂 Mounting NVMe to $MOUNT_POINT..."
+        mkdir -p $MOUNT_POINT
         mount $DEVICE $MOUNT_POINT
     fi
     chmod 777 $MOUNT_POINT
