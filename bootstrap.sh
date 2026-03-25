@@ -47,14 +47,24 @@ else
 fi
 
 # Create directory structure
-mkdir -p $MOUNT_POINT/{models,ollama,envs,apps,tmp}
+mkdir -p $MOUNT_POINT/{models,ollama,envs,apps,tmp,pip_cache}
+
+# !!! CRITICAL: Redirect all temporary files to NVMe to avoid "No space left on device" !!!
+export TMPDIR="$MOUNT_POINT/tmp"
+export TEMP="$MOUNT_POINT/tmp"
+export TMP="$MOUNT_POINT/tmp"
+export PIP_CACHE_DIR="$MOUNT_POINT/pip_cache"
+export HOME_CACHE="$MOUNT_POINT/tmp/home_cache"
+mkdir -p $HOME_CACHE
 
 # ----------------------------
 # 3. Install System Dependencies
 # ----------------------------
 echo "📦 Installing core system packages..."
 apt-get update
-apt-get install -y curl git ffmpeg python3 python3-pip unzip fonts-montserrat sqlite3
+# Install python3-venv specifically for the current python version
+PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+apt-get install -y curl git ffmpeg python3 python3-pip python3-venv python3.${PYTHON_VERSION}-venv unzip fonts-montserrat sqlite3
 
 # ----------------------------
 # 4. Install & Configure Ollama
@@ -115,8 +125,9 @@ cd "$ED_DIR"
 chmod +x start.sh
 
 # Run Easy Diffusion in the background to trigger initial dependency installation
-# It will listen on 0.0.0.0:9000 by default with --listen
 echo "🔄 Starting Easy Diffusion (Initial Setup)..."
+# Pass TMPDIR and other exports to the child process
+export TMPDIR="$MOUNT_POINT/tmp"
 ./start.sh --listen &
 
 # ----------------------------
