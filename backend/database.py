@@ -27,7 +27,8 @@ async def init_db():
                 created_at TEXT NOT NULL,
                 completed_at TEXT,
                 output_path TEXT,
-                error_message TEXT
+                error_message TEXT,
+                user_script TEXT
             )
         """)
         await db.execute("""
@@ -77,6 +78,7 @@ async def init_db():
             "ALTER TABLE scenes ADD COLUMN edited_tags TEXT",
             "ALTER TABLE scenes ADD COLUMN narration_audio TEXT",
             "ALTER TABLE scenes ADD COLUMN edited_audio TEXT",
+            "ALTER TABLE jobs ADD COLUMN user_script TEXT",
         ]
         
         for query in migration_queries:
@@ -91,15 +93,15 @@ async def init_db():
 
 # --- Job Operations ---
 
-async def create_job(topic: str, video_type: str, voice_type: str = "female", workflow_mode: str = "basic") -> dict:
+async def create_job(topic: str, video_type: str, voice_type: str = "female", workflow_mode: str = "basic", user_script: str = None) -> dict:
     """Create a new job and return it."""
     job_id = str(uuid.uuid4())[:8]
     now = datetime.now(timezone.utc).isoformat()
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
-            """INSERT INTO jobs (id, topic, video_type, voice_type, workflow_mode, status, progress_pct, created_at)
-               VALUES (?, ?, ?, ?, ?, 'queued', 0, ?)""",
-            (job_id, topic, video_type, voice_type, workflow_mode, now)
+            """INSERT INTO jobs (id, topic, video_type, voice_type, workflow_mode, user_script, status, progress_pct, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, 'queued', 0, ?)""",
+            (job_id, topic, video_type, voice_type, workflow_mode, user_script, now)
         )
         await db.commit()
     return await get_job(job_id)

@@ -3,8 +3,20 @@
 # This script creates 5 detached screen sessions and starts the required services.
 
 # Variables
-APP_DIR="$HOME/LuminaCast"
-SD_DIR="$HOME/easy-diffusion"
+APP_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Detect if we are on NVMe or local
+if [ -d "/mnt/nvme" ]; then
+    NVME_DIR="/mnt/nvme"
+    SD_DIR="$NVME_DIR/apps/easy-diffusion"
+    # Ensure venv points to NVMe version if bootstrapped
+    VENV_PATH="$NVME_DIR/envs/lumina_venv"
+    # Export for setup_dependencies
+    export VIRTUAL_ENV_BASE="$NVME_DIR/envs"
+else
+    SD_DIR="$HOME/easy-diffusion"
+    VENV_PATH="$APP_DIR/venv"
+fi
 
 # Run dependency check before starting services
 echo "Running dependency check..."
@@ -34,7 +46,7 @@ fi
 # 4. Start Kokoro TTS Server
 echo "Starting Kokoro TTS screen..."
 if [ -d "$APP_DIR" ]; then
-    screen -dmS kokoro bash -c "cd $APP_DIR && source venv/bin/activate && python kokoro_server.py"
+    screen -dmS kokoro bash -c "cd $APP_DIR && source $VENV_PATH/bin/activate && python kokoro_server.py"
 else
     echo "Error: LuminaCast directory not found at $APP_DIR. Cannot start TTS."
 fi
@@ -42,7 +54,7 @@ fi
 # 5. Start LuminaCast Web Server (FastAPI)
 echo "Starting LuminaCast Web Server screen..."
 if [ -d "$APP_DIR/backend" ]; then
-    screen -dmS web bash -c "cd $APP_DIR/backend && source ../venv/bin/activate && python main.py"
+    screen -dmS web bash -c "cd $APP_DIR/backend && source $VENV_PATH/bin/activate && python main.py"
 else
     echo "Error: LuminaCast backend directory not found. Cannot start web server."
 fi

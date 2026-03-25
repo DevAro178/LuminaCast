@@ -400,3 +400,75 @@ async def expand_section_to_scenes(
     logger.info(f"Expanded section '{section_title}' into {len(scenes)} scenes")
     return scenes
 
+
+# ────────────────────────────────────────────────────────────────────────────
+# CUSTOM SCRIPT SEGMENTATION
+# ────────────────────────────────────────────────────────────────────────────
+
+SCRIPT_SEGMENTER_PROMPT = """You are a video script segmenter. I will provide you with a narration script. 
+
+YOUR TASK:
+1. Divide the provided script into individual scenes. Each scene should consist of exactly ONE sentence from the script.
+2. You MUST NOT modify, shorten, or change the original wording of the script sentences in any way. Keep the narration_text exactly as provided.
+3. For each sentence, provide a matching anime image description using a comma-separated list of tags/keywords (Danbooru style).
+4. Include a negative_prompt for each scene.
+5. Create a catchy video title based on the script content.
+
+Script to segment:
+"{user_script}"
+
+Respond ONLY with valid JSON in this exact format, no markdown:
+{{
+  "title": "Video title...",
+  "scenes": [
+    {{
+      "narration_text": "THE EXACT SENTENCE FROM THE SCRIPT",
+      "image_prompt": "Comma-separated visual tags (Danbooru style).",
+      "negative_prompt": "Things to exclude."
+    }}
+  ]
+}}"""
+
+
+async def segment_user_script(user_script: str) -> dict:
+    """
+    Take a raw user script and segment it into scenes with visual tags.
+    """
+    prompt = SCRIPT_SEGMENTER_PROMPT.format(user_script=user_script)
+    logger.info("Segmenting user-provided script...")
+
+    # For long scripts, we need high token limit
+    async with httpx.AsyncClient(timeout=600.0) as client:
+        response = await client.post(
+            f"{OLLAMA_URL}/api/generate",
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "system": SYSTEM_PROMPT,
+                "stream": False,
+                "options": {
+                    "temperature": 0.3, # Low temperature to ensure text accuracy
+                    "num_predict": 32768,
+                }
+            }
+        )
+        response.raise_for_status()
+        result = response.json()
+
+    raw_text = result.get("response", "")
+    cleaned = _clean_json_response(raw_text)
+
+    try:
+        script_data = json.loads(cleaned)
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse segmented script JSON: {e}")
+        raise ValueError(f"LLM returned invalid JSON for segmentation: {e}")
+
+    for scene in script_data.get("scenes", []):
+        scene["narration_audio"] = scene.get("narration_text", "")
+        if "negative_prompt" not in scene:
+            scene["negative_prompt"] = ""
+
+    logger.info(f"Segmented user script into {len(script_data.get('scenes', []))} scenes")
+    return script_data
+

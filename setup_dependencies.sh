@@ -62,8 +62,16 @@ else
 fi
 
 # --- Python Virtual Environment ---
-APP_DIR="$HOME/LuminaCast"
-VENV_DIR="$APP_DIR/venv"
+APP_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Use NVMe base if provided by bootstrap.sh, else fallback to local app dir
+if [ -n "$VIRTUAL_ENV_BASE" ]; then
+    VENV_DIR="$VIRTUAL_ENV_BASE/lumina_venv"
+    echo "📂 Using NVMe Virtual Environment: $VENV_DIR"
+else
+    VENV_DIR="$APP_DIR/venv"
+    echo "📂 Using Local Virtual Environment: $VENV_DIR"
+fi
 
 if [ -d "$VENV_DIR" ]; then
     echo "✅ Python venv exists at $VENV_DIR"

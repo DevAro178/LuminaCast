@@ -25,6 +25,12 @@ const useStore = create((set, get) => ({
   topicInput: '',
   setTopicInput: (val) => set({ topicInput: val }),
 
+  userScript: '',
+  setUserScript: (val) => set({ userScript: val }),
+
+  isCustomScript: false,
+  setIsCustomScript: (val) => set({ isCustomScript: val }),
+
   searchQuery: '',
   setSearchQuery: (query) => {
     set({ searchQuery: query });
@@ -54,8 +60,9 @@ const useStore = create((set, get) => ({
   
   // Actions
   startJob: async () => {
-    const { topicInput, videoType, voiceType, mode } = get();
-    if (!topicInput) return;
+    const { topicInput, userScript, isCustomScript, videoType, voiceType, mode } = get();
+    if (isCustomScript && !userScript) return;
+    if (!isCustomScript && !topicInput) return;
 
     // Force videoType to short in basic mode
     const actualVideoType = mode === 'basic' ? 'short' : videoType;
@@ -64,7 +71,13 @@ const useStore = create((set, get) => ({
     set({ isGenerating: true, progress: 0, status: 'queued', advancedStep: 'input', videoType: actualVideoType });
 
     try {
-      const { job_id } = await jobsApi.createJob(topicInput, actualVideoType, voiceType, mode);
+      const { job_id } = await jobsApi.createJob(
+        isCustomScript ? (userScript.slice(0, 100) + "...") : topicInput, 
+        actualVideoType, 
+        voiceType, 
+        mode,
+        isCustomScript ? userScript : null
+      );
       set({ currentJobId: job_id });
 
       if (mode === 'advanced') {
@@ -102,6 +115,14 @@ const useStore = create((set, get) => ({
       console.error("Failed to revise script:", error);
       set({ isGenerating: false, status: 'idle' });
     }
+  },
+
+  deleteScene: (index) => {
+    set(state => {
+      const newScenes = [...state.scriptScenes];
+      newScenes.splice(index, 1);
+      return { scriptScenes: newScenes };
+    });
   },
 
   startPolling: (jobId) => {

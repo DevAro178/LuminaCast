@@ -12,6 +12,7 @@ export default function ScriptReview() {
   const reviseScript = useStore(state => state.reviseScript);
   const isGenerating = useStore(state => state.isGenerating);
   const status = useStore(state => state.status);
+  const deleteScene = useStore(state => state.deleteScene);
 
   const handleAiRevision = () => {
     reviseScript(); // Logic moved to store
@@ -29,7 +30,12 @@ export default function ScriptReview() {
         </div>
       )}
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-3xl font-display font-black tracking-tighter">SCRIPT REVIEW</h3>
+        <div className="flex items-center gap-4">
+          <h3 className="text-3xl font-display font-black tracking-tighter">SCRIPT REVIEW</h3>
+          <span className="px-3 py-1 bg-accent/20 rounded-full text-[10px] font-black font-display text-accent tracking-widest uppercase border border-accent/20">
+            {scriptScenes.length} SCENES
+          </span>
+        </div>
         <div className="flex gap-4">
           <Button 
             variant="outline" 
@@ -51,7 +57,14 @@ export default function ScriptReview() {
       </div>
       <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
         {scriptScenes.map((scene, index) => (
-          <div key={index} className="p-6 bg-surface/5 rounded-[2rem] flex gap-8 border border-white/5 hover:border-accent/20 transition-all group">
+          <div key={index} className="p-6 bg-surface/5 rounded-[2rem] flex gap-8 border border-white/5 hover:border-accent/20 transition-all group relative">
+            <button 
+              onClick={() => deleteScene(index)}
+              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/5 hover:bg-red-500/80 text-white/50 hover:text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all border border-white/10 hover:border-red-500/50 z-10"
+              title="Delete Scene"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
             <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center font-display font-black text-accent flex-shrink-0 border border-accent/20">
               {index + 1}
             </div>

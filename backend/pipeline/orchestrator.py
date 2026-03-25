@@ -12,11 +12,12 @@ from datetime import datetime, timezone
 
 import database as db
 from config import JOBS_DIR
-from pipeline.script_generator import generate_script, generate_outline, expand_section_to_scenes
+from pipeline.script_generator import generate_script, generate_outline, expand_section_to_scenes, segment_user_script
 from pipeline.image_generator import generate_image, _create_fallback_image
 from pipeline.tts_engine import generate_speech_for_scenes
 from pipeline.caption_generator import generate_captions_from_timestamps
 from pipeline.video_assembler import assemble_video
+from utils.storage import storage
 
 logger = logging.getLogger(__name__)
 
@@ -35,15 +36,20 @@ async def generate_job_script(job_id: str, topic: str, video_type: str) -> dict:
     is_long_advanced = vtype == "long" and job and job.get("workflow_mode") == "advanced"
     
     try:
-        if is_long_advanced:
+        if job and job.get("user_script"):
+            # Custom Script flow
+            await db.update_job(job_id, status="segmenting_script", progress_pct=5)
+            logger.info(f"[{job_id}] Step 1: Segmenting user script...")
+            script_data = await segment_user_script(job.get("user_script"))
+        elif is_long_advanced:
             # Long-form advanced: generate outline (chapters + sections) for user approval
             return await generate_job_outline(job_id, topic)
-        
-        # Short-form or basic: generate scenes directly (existing behavior)
-        await db.update_job(job_id, status="generating_script", progress_pct=5)
-        logger.info(f"[{job_id}] Step 1: Generating script...")
+        else:
+            # Standard generation flow
+            await db.update_job(job_id, status="generating_script", progress_pct=5)
+            logger.info(f"[{job_id}] Step 1: Generating script...")
+            script_data = await generate_script(topic, video_type)
 
-        script_data = await generate_script(topic, video_type)
         scenes = script_data["scenes"]
 
         # Save script to file for reference
@@ -281,9 +287,12 @@ async def generate_job_visuals(job_id: str):
 
             await on_image_progress(i + 1, total)
 
-        # Update DB scene records with actual image paths
-        for scene_rec, img_path in zip(db_scenes, image_paths):
-            await db.update_scene(scene_rec["id"], image_path=img_path)
+        # Update DB scene records with S3 URLs (if enabled) or local paths
+        for i, (scene_rec, local_img_path) in enumerate(zip(db_scenes, image_paths)):
+            s3_key = f"jobs/{job_id}/images/scene_{i:03d}.jpg"
+            # upload_file returns URL if enabled, else local_path string
+            final_img_path = await asyncio.to_thread(storage.upload_file, local_img_path, s3_key)
+            await db.update_scene(scene_rec["id"], image_path=final_img_path)
 
         await db.update_job(job_id, status="visual_review" if job["workflow_mode"] == "advanced" else "generating_audio", progress_pct=50)
         logger.info(f"[{job_id}] Images generated: {len(image_paths)} files")
@@ -304,14 +313,16 @@ async def assemble_job_video(job_id: str):
     
     db_scenes = await db.get_scenes(job_id)
     scenes = []
-    image_paths = []
-    for rec in db_scenes:
+    local_image_paths = []
+    for i, rec in enumerate(db_scenes):
         scenes.append({
             "narration_text": rec["edited_text"] or rec["narration_text"],
             "narration_audio": rec["edited_audio"] or rec["narration_audio"] or rec["edited_text"] or rec["narration_text"],
             "image_prompt": rec["edited_tags"] or rec["image_prompt"]
         })
-        image_paths.append(rec["image_path"])
+        # Use local paths for MoviePy assembly (high performance)
+        local_img = job_dir / "images" / f"scene_{i:03d}.jpg"
+        local_image_paths.append(str(local_img))
 
     try:
         # ---- Step 3.1: Generate TTS Audio ----
@@ -330,11 +341,15 @@ async def assemble_job_video(job_id: str):
             scenes, job_dir, voice_type, on_progress=on_tts_progress
         )
 
-        # Update scene records with audio paths and durations
-        for scene_rec, tts in zip(db_scenes, tts_results):
+        # Update scene records with audio paths (S3 URLs if enabled) and durations
+        for i, (scene_rec, tts) in enumerate(zip(db_scenes, tts_results)):
+            local_audio_path = tts["audio_path"]
+            s3_key = f"jobs/{job_id}/audio/scene_{i:03d}.mp3"
+            final_audio_path = await asyncio.to_thread(storage.upload_file, local_audio_path, s3_key)
+            
             await db.update_scene(
                 scene_rec["id"],
-                audio_path=tts["audio_path"],
+                audio_path=final_audio_path,
                 duration_seconds=tts["duration"],
             )
 
@@ -362,7 +377,7 @@ async def assemble_job_video(job_id: str):
             assemble_video,
             scenes=scenes,
             tts_results=tts_results,
-            image_paths=image_paths,
+            image_paths=local_image_paths,
             caption_path=str(caption_path),
             output_path=output_path,
             video_type=video_type,
@@ -370,15 +385,18 @@ async def assemble_job_video(job_id: str):
         )
 
         # ---- Done ----
+        s3_video_key = f"jobs/{job_id}/results/output.mp4"
+        final_video_url = await asyncio.to_thread(storage.upload_file, output_path, s3_video_key)
+        
         now = datetime.now(timezone.utc).isoformat()
         await db.update_job(
             job_id,
             status="completed",
             progress_pct=100,
             completed_at=now,
-            output_path=str(output_path),
+            output_path=final_video_url,
         )
-        logger.info(f"[{job_id}] ✅ Pipeline complete! Video at {output_path}")
+        logger.info(f"[{job_id}] ✅ Pipeline complete! Video at {final_video_url}")
 
     except Exception as e:
         logger.exception(f"[{job_id}] Assembly failed: {e}")

@@ -32,19 +32,26 @@ def _ken_burns_effect(clip, zoom_factor=KEN_BURNS_ZOOM):
         current_zoom = 1.0 + (zoom_factor - 1.0) * progress
         frame = get_frame(t)
 
-        # Calculate crop region for zoom
-        new_w = int(w / current_zoom)
-        new_h = int(h / current_zoom)
-        x_offset = (w - new_w) // 2
-        y_offset = (h - new_h) // 2
-
-        cropped = frame[y_offset:y_offset + new_h, x_offset:x_offset + new_w]
-
-        # Use PIL for high-quality resize
+        # Use PIL for high-quality subpixel crop and resize
         from PIL import Image
-        pil_img = Image.fromarray(cropped)
-        pil_img = pil_img.resize((w, h), Image.LANCZOS)
-        return np.array(pil_img)
+        pil_img = Image.fromarray(frame)
+        
+        # Calculate subpixel crop region
+        new_w = w / current_zoom
+        new_h = h / current_zoom
+        x_offset = (w - new_w) / 2
+        y_offset = (h - new_h) / 2
+        
+        # PIL.crop takes (left, top, right, bottom)
+        left, top = x_offset, y_offset
+        right, bottom = x_offset + new_w, y_offset + new_h
+        
+        # Resize to target with high-quality filter
+        # crop() then resize() ensures subpixel accuracy
+        return np.array(
+            pil_img.crop((left, top, right, bottom))
+            .resize((w, h), Image.LANCZOS)
+        )
 
     return clip.transform(make_frame)
 

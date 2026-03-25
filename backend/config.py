@@ -62,3 +62,11 @@ TTS_VOICES = {
 # --- Transition / Animation ---
 CROSSFADE_DURATION = 0.3  # seconds
 KEN_BURNS_ZOOM = 1.08     # 8% zoom over scene duration
+
+# --- S3 Cloud Storage ---
+S3_ENABLED = os.getenv("S3_ENABLED", "false").lower() == "true"
+S3_ACCESS_KEY = os.getenv("S3_ACCESS_KEY", "")
+S3_SECRET_KEY = os.getenv("S3_SECRET_KEY", "")
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "luminacast-public")
+S3_REGION = os.getenv("S3_REGION", "us-east-1")
+S3_CUSTOM_DOMAIN = os.getenv("S3_CUSTOM_DOMAIN", "") # e.g. "cdn.luminacast.com"

@@ -35,6 +35,11 @@ export default function ContentGrid() {
   
   const topicInput = useStore(state => state.topicInput);
   const setTopicInput = useStore(state => state.setTopicInput);
+  const userScript = useStore(state => state.userScript);
+  const setUserScript = useStore(state => state.setUserScript);
+  const isCustomScript = useStore(state => state.isCustomScript);
+  const setIsCustomScript = useStore(state => state.setIsCustomScript);
+  
   const startJob = useStore(state => state.startJob);
   const isGenerating = useStore(state => state.isGenerating);
   const status = useStore(state => state.status);
@@ -107,23 +112,47 @@ export default function ContentGrid() {
                   { value: 'male', label: 'Male Voice' }
                 ]}
               />
+
+              <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/5">
+                <input 
+                  type="checkbox" 
+                  id="custom-script-toggle"
+                  checked={isCustomScript}
+                  onChange={(e) => setIsCustomScript(e.target.checked)}
+                  className="w-4 h-4 rounded border-white/10 bg-surface accent-accent transition-all cursor-pointer"
+                />
+                <label htmlFor="custom-script-toggle" className="text-[10px] font-black tracking-widest uppercase cursor-pointer select-none">
+                  Manual Script
+                </label>
+              </div>
             </div>
             
-            <div className="flex gap-2 relative z-10">
-              <input 
-                type="text" 
-                value={topicInput}
-                onChange={(e) => setTopicInput(e.target.value)}
-                placeholder={mode === 'basic' ? "What's your video about?" : "Describe target audience, style, and tone..."} 
-                className="flex-1 bg-white/5 rounded-full px-6 py-4 outline-none placeholder:text-white/30 text-white font-medium disabled:opacity-50 border border-white/5 focus:border-white/20 transition-all"
-                disabled={isGenerating}
-              />
+            <div className="flex flex-col gap-3 relative z-10">
+              {isCustomScript ? (
+                <textarea 
+                  value={userScript}
+                  onChange={(e) => setUserScript(e.target.value)}
+                  placeholder="Paste your full script here. We will segment it into scenes and generate anime visuals for each sentence without changing your wording..." 
+                  className="w-full h-32 bg-white/5 rounded-3xl px-6 py-4 outline-none placeholder:text-white/30 text-sm leading-relaxed text-white font-medium disabled:opacity-50 border border-white/5 focus:border-white/20 transition-all resize-none"
+                  disabled={isGenerating}
+                />
+              ) : (
+                <input 
+                  type="text" 
+                  value={topicInput}
+                  onChange={(e) => setTopicInput(e.target.value)}
+                  placeholder={mode === 'basic' ? "What's your video about?" : "Describe target audience, style, and tone..."} 
+                  className="w-full bg-white/5 rounded-full px-6 py-4 outline-none placeholder:text-white/30 text-white font-medium disabled:opacity-50 border border-white/5 focus:border-white/20 transition-all"
+                  disabled={isGenerating}
+                />
+              )}
+              
               <Button 
                 variant="primary"
                 onClick={startJob}
-                disabled={isGenerating || !topicInput}
+                disabled={isGenerating || (isCustomScript ? !userScript : !topicInput)}
               >
-                {mode === 'basic' ? "GENERATE" : "DRAFT SCRIPT"}
+                {isCustomScript ? "SEGMENT & GENERATE" : (mode === 'basic' ? "GENERATE" : "DRAFT SCRIPT")}
               </Button>
             </div>
           </div>

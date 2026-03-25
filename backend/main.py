@@ -98,10 +98,11 @@ class ScenesUpdateRequest(BaseModel):
     scenes: list[SceneUpdate]
 
 class GenerateV2Request(BaseModel):
-    topic: str = Field(..., min_length=3, max_length=2000, description="Video topic or title")
+    topic: str | None = Field(None, min_length=3, max_length=2000, description="Video topic or title")
     video_type: str = Field("short", pattern="^(long|short)$", description="'long' (5-10 min) or 'short' (30-60s)")
     voice_type: str = Field("female", pattern="^(female|male)$", description="Voice type for narration")
     workflow_mode: str = Field("advanced", pattern="^(basic|advanced)$")
+    user_script: str | None = Field(None, description="Optional custom script provided by the user")
 
 
 # --- API Endpoints (V1 / Legacy) ---
@@ -134,10 +135,11 @@ async def start_generation(request: GenerateRequest, background_tasks: Backgroun
 async def create_job_v2(request: GenerateV2Request, background_tasks: BackgroundTasks):
     """Initialize a V2 job. Auto-runs if basic mode."""
     job = await db.create_job(
-        topic=request.topic,
+        topic=request.topic or "Custom Script Video",
         video_type=request.video_type,
         voice_type=request.voice_type,
         workflow_mode=request.workflow_mode,
+        user_script=request.user_script
     )
     
     if request.workflow_mode == "basic":
@@ -237,21 +239,23 @@ async def update_job_scenes(job_id: str, request: ScenesUpdateRequest):
     if not job:
         raise HTTPException(404, "Job not found")
         
+    # First, fetch existing scenes to preserve metadata (like image_path if it exists, though unlikely here)
     db_scenes = await db.get_scenes(job_id)
-    scene_map = {s["scene_index"]: s["id"] for s in db_scenes}
+    # Map them for quick lookup if we wanted to preserve specific fields, 
+    # but for script review, re-inserting is cleaner to handle deletions/reordering.
     
+    # Clear existing and re-insert in bulk to maintain order and update total_scenes count
+    await db.delete_scenes_for_job(job_id)
+    
+    new_scenes_data = []
     for scene_update in request.scenes:
-        if scene_update.scene_index in scene_map:
-            scene_id = scene_map[scene_update.scene_index]
-            update_data = {}
-            if scene_update.edited_text is not None:
-                update_data["edited_text"] = scene_update.edited_text
-            if scene_update.edited_tags is not None:
-                update_data["edited_tags"] = scene_update.edited_tags
-            if scene_update.edited_audio is not None:
-                update_data["edited_audio"] = scene_update.edited_audio
-            if update_data:
-                await db.update_scene(scene_id, **update_data)
+        new_scenes_data.append({
+            "narration_text": scene_update.edited_text or "",
+            "image_prompt": scene_update.edited_tags or "",
+            "narration_audio": scene_update.edited_audio
+        })
+    
+    await db.create_scenes(job_id, new_scenes_data)
             
     await db.update_job(job_id, approved_script=True)
     return {"status": "success"}
