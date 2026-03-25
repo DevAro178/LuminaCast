@@ -8,6 +8,12 @@ set -e
 DEVICE="/dev/nvme1n1"
 MOUNT_POINT="/mnt/nvme"
 
+# Check for root privileges
+if [ "$EUID" -ne 0 ]; then
+  echo "❌ Error: Please run as root (use sudo ./bootstrap.sh)"
+  exit 1
+fi
+
 echo "=== 🚀 Starting Full Infrastructure Bootstrapping ==="
 
 # ----------------------------
@@ -53,9 +59,16 @@ apt-get install -y curl git ffmpeg python3 python3-pip unzip fonts-montserrat sq
 echo "🦙 Installing Ollama..."
 if ! command -v ollama &>/dev/null; then
     curl -fsSL https://ollama.com/install.sh | sh
+    # Give systemd a moment to recognize the new service
+    if command -v systemctl &>/dev/null; then
+        systemctl daemon-reload
+        sleep 2
+    fi
 fi
 
-systemctl stop ollama || true
+if command -v systemctl &>/dev/null; then
+    systemctl stop ollama || true
+fi
 
 OLLAMA_DIR="/root/.ollama"
 mkdir -p $MOUNT_POINT/ollama
@@ -69,7 +82,15 @@ if [ ! -L "$OLLAMA_DIR" ]; then
     ln -s $MOUNT_POINT/ollama $OLLAMA_DIR
 fi
 
-systemctl start ollama
+if command -v systemctl &>/dev/null; then
+    systemctl start ollama || true
+    echo "⌛ Waiting for Ollama service to heat up..."
+    sleep 5
+else
+    echo "⚠️  systemctl not found. Starting ollama manually in background..."
+    nohup ollama serve > /var/log/ollama.log 2>&1 &
+    sleep 5
+fi
 
 echo "🧠 Pulling Mistral model (Ollama)..."
 ollama pull mistral || echo "⚠️ Failed to pull mistral. Will retry later."
