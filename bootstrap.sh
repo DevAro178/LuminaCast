@@ -7,6 +7,7 @@ set -e
 
 DEVICE="/dev/nvme1n1"
 MOUNT_POINT="/mnt/nvme"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Check for root privileges
 if [ "$EUID" -ne 0 ]; then
@@ -133,7 +134,6 @@ echo "🐍 Setting up LuminaCast Python environment..."
 export VIRTUAL_ENV_BASE="$MOUNT_POINT/envs"
 
 # Correctly point to the setup script relative to THIS script's location
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 bash "$SCRIPT_DIR/setup_dependencies.sh"
 
 echo "=== ✅ Bootstrapping Complete! ==="
