@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 from config import (
     S3_ENABLED, S3_ACCESS_KEY, S3_SECRET_KEY, 
-    S3_BUCKET_NAME, S3_REGION, S3_CUSTOM_DOMAIN
+    S3_BUCKET_NAME, S3_REGION
 )
 
 logger = logging.getLogger(__name__)
@@ -62,10 +62,7 @@ class S3Storage:
                 ExtraArgs={'ContentType': content_type}
             )
             
-            if self.custom_domain:
-                url = f"https://{self.custom_domain}/{s3_key}"
-            else:
-                url = f"https://{self.bucket}.s3.{S3_REGION}.amazonaws.com/{s3_key}"
+            url = f"https://{self.bucket}.s3.{S3_REGION}.amazonaws.com/{s3_key}"
             
             logger.info(f"Uploaded {local_path.name} to S3: {url}")
             return url
