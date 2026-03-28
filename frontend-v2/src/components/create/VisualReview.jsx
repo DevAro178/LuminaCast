@@ -238,9 +238,17 @@ export default function VisualReview() {
     } catch { /* cross-origin or canvas blocked */ }
   };
 
-  const getImageUrl = (sceneIndex) => {
-    const padded = String(sceneIndex).padStart(3, '0');
-    const ts = timestamps[sceneIndex] || stableTs.current;
+  const getImageUrl = (i) => {
+    const scene = scriptScenes[i];
+    if (scene?.image_path) {
+      const ts = timestamps[scene.scene_index] || stableTs.current;
+      const separator = scene.image_path.includes('?') ? '&' : '?';
+      return `${scene.image_path}${separator}t=${ts}`;
+    }
+
+    const idx = scene?.scene_index ?? i;
+    const padded = String(idx).padStart(3, '0');
+    const ts = timestamps[idx] || stableTs.current;
     return `${config.apiBaseUrl}/api/v2/assets/jobs/${currentJobId}/images/scene_${padded}.jpg?t=${ts}`;
   };
 

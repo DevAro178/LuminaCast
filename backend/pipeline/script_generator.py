@@ -408,14 +408,17 @@ async def expand_section_to_scenes(
 # CUSTOM SCRIPT SEGMENTATION
 # ────────────────────────────────────────────────────────────────────────────
 
-SCRIPT_SEGMENTER_PROMPT = """You are a video script segmenter. I will provide you with a narration script. 
+SCRIPT_SEGMENTER_PROMPT = """You are a precise video script segmenter. I will provide you with a narration script. 
 
 YOUR TASK:
-1. Divide the provided script into individual scenes. Each scene should consist of exactly ONE sentence from the script.
-2. You MUST NOT modify, shorten, or change the original wording of the script sentences in any way. Keep the narration_text exactly as provided.
-3. For each sentence, provide a matching anime image description using a comma-separated list of tags/keywords (Danbooru style).
-4. Include a negative_prompt for each scene.
-5. Create a catchy video title based on the script content.
+1. Divide the provided script into individual scenes. 
+2. CRITICAL: Each scene MUST consist of EXACTLY ONE full sentence from the script. 
+3. NEVER break a single sentence into multiple scenes.
+4. NEVER combine multiple sentences into a single scene.
+5. You MUST NOT modify, shorten, or change the original wording of the script sentences in any way. Keep the narration_text exactly as provided, word-for-word.
+6. For each sentence, provide a matching anime image description using a comma-separated list of tags/keywords (Danbooru style).
+7. Include a negative_prompt for each scene.
+8. Create a catchy video title based on the script content.
 
 Script to segment:
 "{user_script}"
@@ -425,7 +428,7 @@ Respond ONLY with valid JSON in this exact format, no markdown:
   "title": "Video title...",
   "scenes": [
     {{
-      "narration_text": "THE EXACT SENTENCE FROM THE SCRIPT",
+      "narration_text": "THE EXACT FULL SENTENCE FROM THE SCRIPT",
       "image_prompt": "Comma-separated visual tags (Danbooru style).",
       "negative_prompt": "Things to exclude."
     }}

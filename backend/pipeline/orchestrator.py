@@ -221,6 +221,13 @@ async def generate_job_visuals(job_id: str):
             )
 
         images_dir = job_dir / "images"
+        if images_dir.exists():
+            # Clear existing images before generation to prevent indexing/sync bugs after scene removals
+            logger.info(f"[{job_id}] Clearing stale images directory...")
+            try:
+                shutil.rmtree(images_dir)
+            except Exception as e:
+                logger.warning(f"Could not fully clear images dir: {e}")
         images_dir.mkdir(parents=True, exist_ok=True)
         
         image_paths = []
@@ -470,14 +477,20 @@ async def regenerate_single_scene(job_id: str, scene_index: int, custom_tags: st
     try:
         logger.info(f"[{job_id}] Regenerating scene {scene_index}: {image_prompt[:60]}...")
         from pipeline.image_generator import generate_image
-        saved_path = await generate_image(
+        local_path = await generate_image(
             prompt=image_prompt,
             output_path=image_path,
             video_type=video_type,
             negative_prompt=negative_prompt,
         )
-        await db.update_scene(target_scene["id"], image_path=saved_path)
-        logger.info(f"[{job_id}] Scene {scene_index} regenerated → {saved_path}")
+        
+        # Upload to S3 if enabled
+        s3_key = f"jobs/{job_id}/images/scene_{scene_index:03d}.jpg"
+        from utils.storage import storage
+        final_path = await asyncio.to_thread(storage.upload_file, local_path, s3_key)
+        
+        await db.update_scene(target_scene["id"], image_path=final_path)
+        logger.info(f"[{job_id}] Scene {scene_index} regenerated → {final_path}")
     except Exception as e:
         logger.exception(f"[{job_id}] Failed to regenerate scene {scene_index}: {e}")
 

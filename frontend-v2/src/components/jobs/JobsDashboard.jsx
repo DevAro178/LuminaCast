@@ -15,6 +15,7 @@ function getStatusColor(status) {
 function getStatusLabel(status) {
   if (status === 'script_review') return 'AWAITING SCRIPT REVIEW';
   if (status === 'visual_review') return 'AWAITING VISUAL REVIEW';
+  if (status === 'segmenting_script') return 'SEGMENTING SCRIPT...';
   return status.replace(/_/g, ' ').toUpperCase();
 }
 
