@@ -26,7 +26,11 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral")
 
 EASY_DIFFUSION_URL = os.getenv("EASY_DIFFUSION_URL", "http://localhost:9000")
 
+# --- TTS Settings ---
+TTS_PROVIDER = os.getenv("TTS_PROVIDER", "chatterbox")  # "kokoro" or "chatterbox"
 KOKORO_TTS_URL = os.getenv("KOKORO_TTS_URL", "http://localhost:8880")
+CHATTERBOX_TTS_URL = os.getenv("CHATTERBOX_TTS_URL", "http://localhost:8881")
+VOICE_SAMPLE_PATH = os.getenv("VOICE_SAMPLE_PATH", str(PROJECT_ROOT / "sample.wav"))
 
 # --- Video Defaults ---
 VIDEO_FPS = 30

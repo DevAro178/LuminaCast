@@ -8,7 +8,7 @@ import json
 import struct
 import wave
 from pathlib import Path
-from config import KOKORO_TTS_URL, TTS_VOICES
+from config import KOKORO_TTS_URL, CHATTERBOX_TTS_URL, TTS_PROVIDER, TTS_VOICES
 
 logger = logging.getLogger(__name__)
 
@@ -34,18 +34,29 @@ async def generate_speech(
 
     voice_id = TTS_VOICES.get(voice_type, TTS_VOICES["female"])
 
-    logger.info(f"Generating TTS ({voice_type}): {text[:60]}...")
+    url_base = CHATTERBOX_TTS_URL if TTS_PROVIDER == "chatterbox" else KOKORO_TTS_URL
+    api_url = f"{url_base}/api/generate"
+
+    # Define request payload based on provider
+    if TTS_PROVIDER == "chatterbox":
+        payload = {
+            "text": text,
+            "voice": voice_type,
+            "exaggeration": 0.5,
+            "cfg_weight": 0.5
+        }
+    else:
+        payload = {
+            "text": text,
+            "voice": voice_id,
+            "speed": 0.81,
+            "response_format": "wav",
+        }
+
+    logger.info(f"Generating TTS ({TTS_PROVIDER}/{voice_type}): {text[:60]}...")
 
     async with httpx.AsyncClient(timeout=120.0) as client:
-        response = await client.post(
-            f"{KOKORO_TTS_URL}/api/generate",
-            json={
-                "text": text,
-                "voice": voice_id,
-                "speed": 0.81,  # Balanced speed (0.75 was too slow, 0.85/1.0 too fast)
-                "response_format": "wav",
-            }
-        )
+        response = await client.post(api_url, json=payload)
         response.raise_for_status()
 
         # Check if the response is JSON (with timestamps) or raw audio

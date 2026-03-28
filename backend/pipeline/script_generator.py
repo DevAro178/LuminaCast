@@ -25,8 +25,9 @@ IMPORTANT RULES:
    - Example: "1boy, vash the stampede, trigun stampede, red jacket, sunglasses, gun, hand on own hip, aiming, standing, looking at viewer, upper body, desert, cliff, cowboy shot"
 25. Image descriptions must convey deep meaning and symbolism through specific visual tags that reinforce the sentence's meaning.
 26. Never include text, words, or UI elements in image descriptions
-27. Keep narration sentences concise — each should be spoken in 3-8 seconds
-28. For each scene, provide a negative_prompt listing things to EXCLUDE from the image (e.g. artifacts, unwanted elements specific to that scene)
+27. Concise sentences: Each scene should be spoken in 3-8 seconds.
+28. Negative prompt: Provide a list of things to EXCLUDE from the image for each scene.
+29. **Expressiveness**: You MUST include paralinguistic tags like `[laugh]`, `[chuckle]`, `[sigh]`, or `[clears throat]` in the `narration_text` wherever it adds emotional depth or conversational flavor.
 """
 
 LONG_FORM_PROMPT = """Write a YouTube narration script about: "{topic}"
@@ -170,6 +171,7 @@ TASK:
 2. Revise the narrations or image descriptions to better align with the feedback.
 3. If narrations were changed by the user, ensure the new image descriptions or narrations maintain flow.
 4. If no specific feedback was provided but a revision was requested, improve the overall quality and depth.
+5. **Expressiveness**: Incorporate tags like `[laugh]`, `[chuckle]`, or `[sigh]` into revised sentences to enhance the narrator's performance.
 
 Respond ONLY with valid JSON in the exact same format as before:
 {{
@@ -280,6 +282,7 @@ Write 8-15 narration sentences for THIS SECTION ONLY. Each sentence becomes one 
 - Provide Danbooru-style anime image tags for each scene
 - Keep sentences concise (3-8 seconds when spoken)
 - Build on the context of previous sections without repeating them
+- **Expressiveness**: Use paralinguistic tags like `[laugh]` or `[chuckle]` within the `narration_text` for a more natural performance.
 
 Respond ONLY with valid JSON in this exact format, no markdown:
 {{

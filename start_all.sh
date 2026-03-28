@@ -46,7 +46,7 @@ fi
 # 4. Start Kokoro TTS Server
 echo "Starting Kokoro TTS screen..."
 if [ -d "$APP_DIR" ]; then
-    screen -dmS kokoro bash -c "cd $APP_DIR && source $VENV_PATH/bin/activate && python kokoro_server.py"
+    screen -dmS kokoro bash -c "cd $APP_DIR && source /home/ubuntu/LuminaCast/backend/.venv/bin/activate && python kokoro_server.py"
 else
     echo "Error: LuminaCast directory not found at $APP_DIR. Cannot start TTS."
 fi
@@ -65,6 +65,26 @@ if [ -d "$APP_DIR/frontend-v2" ]; then
     screen -dmS frontend bash -c "cd $APP_DIR/frontend-v2 && npm run dev"
 else
     echo "Error: LuminaCast frontend directory not found. Cannot start frontend server."
+fi
+
+# 7. Start Chatterbox TTS Server (Expressive AI)
+echo "Starting Chatterbox TTS screen..."
+CHAT_NVME="/opt/dlami/nvme"
+CHAT_VENV="$CHAT_NVME/envs/chatterbox_venv"
+
+if [ -d "$CHAT_NVME" ]; then
+    if [ ! -d "$CHAT_VENV" ]; then
+        echo "📦 Creating Chatterbox Python 3.11 venv on NVMe..."
+        mkdir -p "$CHAT_NVME/envs"
+        python3.11 -m venv "$CHAT_VENV"
+        source "$CHAT_VENV/bin/activate"
+        pip install --upgrade pip
+        pip install -r "$APP_DIR/chatterbox_requirements.txt"
+    fi
+    echo "Starting Chatterbox server on port 8881..."
+    screen -dmS chatterbox bash -c "cd $APP_DIR && source $CHAT_VENV/bin/activate && python chatterbox_server.py"
+else
+    echo "⚠️  Note: /opt/dlami/nvme not found. Skipping Chatterbox auto-start."
 fi
 
 echo ""
