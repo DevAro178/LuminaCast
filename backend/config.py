@@ -4,6 +4,12 @@ All service URLs, paths, and default settings.
 """
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# --- Load Environment Variables ---
+# Look in current directory (backend/.env) and project root
+load_dotenv()
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 # --- Paths ---
 BASE_DIR = Path(__file__).resolve().parent
