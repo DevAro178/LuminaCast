@@ -6,6 +6,7 @@ each with an anime image prompt.
 import json
 import httpx
 import logging
+import re
 from config import OLLAMA_URL, OLLAMA_MODEL
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ IMPORTANT RULES:
 26. Never include text, words, or UI elements in image descriptions
 27. Concise sentences: Each scene should be spoken in 3-8 seconds.
 28. Negative prompt: Provide a list of things to EXCLUDE from the image for each scene.
-29. **Expressiveness**: You MUST include paralinguistic tags like `[laugh]`, `[chuckle]`, `[sigh]`, or `[clears throat]` in the `narration_text` wherever it adds emotional depth or conversational flavor.
+29. **Expressiveness**: Use ONLY these valid paralinguistic tags in `narration_text` for emotional depth: `[clear throat]`, `[sigh]`, `[shush]`, `[cough]`, `[groan]`, `[sniff]`, `[gasp]`, `[chuckle]`, `[laugh]`. Use them sparingly and only when it adds significant value. Do not add any other bracketed text.
 """
 
 LONG_FORM_PROMPT = """Write a YouTube narration script about: "{topic}"
@@ -147,8 +148,8 @@ async def generate_script(topic: str, video_type: str = "long") -> dict:
         if "narration_text" not in scene or "image_prompt" not in scene:
             raise ValueError(f"Scene {i} missing required fields")
         
-        # Manually duplicate narration_text to narration_audio as requested
-        scene["narration_audio"] = scene["narration_text"]
+        # Process paralinguistic tags (audio vs captions)
+        _process_scene_tags(scene)
         
         # Ensure negative_prompt has a fallback if the LLM omits it
         if "negative_prompt" not in scene:
@@ -171,7 +172,7 @@ TASK:
 2. Revise the narrations or image descriptions to better align with the feedback.
 3. If narrations were changed by the user, ensure the new image descriptions or narrations maintain flow.
 4. If no specific feedback was provided but a revision was requested, improve the overall quality and depth.
-5. **Expressiveness**: Incorporate tags like `[laugh]`, `[chuckle]`, or `[sigh]` into revised sentences to enhance the narrator's performance.
+5. **Expressiveness**: Incorporate ONLY valid tags (`[laugh]`, `[chuckle]`, `[sigh]`, `[clear throat]`, `[shush]`, `[cough]`, `[groan]`, `[sniff]`, `[gasp]`) into revised sentences if needed.
 
 Respond ONLY with valid JSON in the exact same format as before:
 {{
@@ -229,10 +230,9 @@ async def revise_script(topic: str, feedback: str = "", current_scenes: list = N
         logger.error(f"Failed to parse revised script JSON: {e}")
         raise ValueError(f"LLM returned invalid JSON for revision: {e}")
 
-    # Manually duplicate narration_text to narration_audio for revised scenes
     for scene in script_data.get("scenes", []):
         if "narration_text" in scene:
-            scene["narration_audio"] = scene["narration_text"]
+            _process_scene_tags(scene)
 
     return script_data
 
@@ -282,7 +282,7 @@ Write 8-15 narration sentences for THIS SECTION ONLY. Each sentence becomes one 
 - Provide Danbooru-style anime image tags for each scene
 - Keep sentences concise (3-8 seconds when spoken)
 - Build on the context of previous sections without repeating them
-- **Expressiveness**: Use paralinguistic tags like `[laugh]` or `[chuckle]` within the `narration_text` for a more natural performance.
+- **Expressiveness**: Use ONLY valid tags (`[laugh]`, `[chuckle]`, `[sigh]`, `[clear throat]`, etc.) within the `narration_text` for a more natural performance.
 
 Respond ONLY with valid JSON in this exact format, no markdown:
 {{
@@ -395,8 +395,8 @@ async def expand_section_to_scenes(
     scenes = section_data.get("scenes", [])
 
     for scene in scenes:
-        # Mirror narration_text to narration_audio
-        scene["narration_audio"] = scene.get("narration_text", "")
+        # Process paralinguistic tags (audio vs captions)
+        _process_scene_tags(scene)
         if "negative_prompt" not in scene:
             scene["negative_prompt"] = ""
 
@@ -468,10 +468,29 @@ async def segment_user_script(user_script: str) -> dict:
         raise ValueError(f"LLM returned invalid JSON for segmentation: {e}")
 
     for scene in script_data.get("scenes", []):
-        scene["narration_audio"] = scene.get("narration_text", "")
+        _process_scene_tags(scene)
         if "negative_prompt" not in scene:
             scene["negative_prompt"] = ""
 
     logger.info(f"Segmented user script into {len(script_data.get('scenes', []))} scenes")
     return script_data
+
+
+TAG_REGEX = re.compile(r'\[(clear throat|sigh|shush|cough|groan|sniff|gasp|chuckle|laugh)\]', re.IGNORECASE)
+
+def _process_scene_tags(scene: dict):
+    """
+    Handle paralinguistic tags:
+    1. Keep original text with tags in 'narration_audio' for TTS.
+    2. Strip tags from 'narration_text' for captions.
+    """
+    text = scene.get("narration_text", "")
+    scene["narration_audio"] = text
+    
+    # Strip tags from the display text
+    cleaned_text = TAG_REGEX.sub("", text)
+    # Clean up any resulting double spaces or leading/trailing whitespace
+    cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
+    
+    scene["narration_text"] = cleaned_text
 
