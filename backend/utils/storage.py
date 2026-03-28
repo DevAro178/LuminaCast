@@ -22,7 +22,6 @@ class S3Storage:
                     region_name=S3_REGION
                 )
                 self.bucket = S3_BUCKET_NAME
-                self.custom_domain = S3_CUSTOM_DOMAIN
                 logger.info(f"S3 Storage initialized (bucket: {self.bucket})")
             except Exception as e:
                 logger.error(f"Failed to initialize S3 client: {e}")

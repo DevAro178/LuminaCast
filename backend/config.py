@@ -69,4 +69,3 @@ S3_ACCESS_KEY = os.getenv("S3_ACCESS_KEY", "")
 S3_SECRET_KEY = os.getenv("S3_SECRET_KEY", "")
 S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "luminacast-public")
 S3_REGION = os.getenv("S3_REGION", "us-east-1")
-S3_CUSTOM_DOMAIN = os.getenv("S3_CUSTOM_DOMAIN", "") # e.g. "cdn.luminacast.com"

@@ -64,7 +64,7 @@ echo "📦 Installing core system packages..."
 apt-get update
 # Install python3-venv specifically for the current python version
 PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-apt-get install -y curl git ffmpeg python3 python3-pip python3-venv python3.${PYTHON_VERSION}-venv unzip fonts-montserrat sqlite3
+apt-get install -y curl git ffmpeg python3 python3-pip python3-venv python${PYTHON_VERSION}-venv unzip fonts-montserrat sqlite3
 
 # ----------------------------
 # 4. Install & Configure Ollama
