@@ -4,12 +4,14 @@ Admin Manager — SQLAdmin integration for database management.
 from fastapi import FastAPI
 from sqladmin import Admin, ModelView
 from sqlalchemy import create_engine, Column, String, Integer, Boolean, Float, ForeignKey, Text
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from config import DB_PATH
 
 # SQLAdmin uses SQLAlchemy models. We define them here to match the aiosqlite schema.
 Base = declarative_base()
-engine = create_engine(f"sqlite:///{DB_PATH}")
+# Use 4 slashes for absolute paths on Linux if it starts with /, or 3 if it's relative.
+# SQLAlchemy handles sqlite:///path/to/file.db correctly for absolute paths.
+engine = create_engine(f"sqlite:///{DB_PATH}", connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 class Job(Base):
@@ -31,6 +33,10 @@ class Job(Base):
     error_message = Column(Text)
     user_script = Column(Text)
 
+    # Relationships
+    scenes = relationship("Scene", back_populates="job", cascade="all, delete-orphan")
+    outline_items = relationship("OutlineItem", back_populates="job", cascade="all, delete-orphan")
+
 class Scene(Base):
     __tablename__ = "scenes"
     id = Column(String, primary_key=True)
@@ -46,6 +52,8 @@ class Scene(Base):
     audio_path = Column(String)
     duration_seconds = Column(Float)
 
+    job = relationship("Job", back_populates="scenes")
+
 class OutlineItem(Base):
     __tablename__ = "outline"
     id = Column(String, primary_key=True)
@@ -55,6 +63,8 @@ class OutlineItem(Base):
     title = Column(String)
     description = Column(String)
     type = Column(String)
+
+    job = relationship("Job", back_populates="outline_items")
 
 class ImagePool(Base):
     __tablename__ = "image_pool"
@@ -73,6 +83,7 @@ class JobAdmin(ModelView, model=Job):
     name = "Video Job"
     name_plural = "Video Jobs"
     icon = "fa-solid fa-list-check"
+    category = "Production"
 
 class SceneAdmin(ModelView, model=Scene):
     column_list = [Scene.job_id, Scene.scene_index, Scene.narration_text]
@@ -80,22 +91,25 @@ class SceneAdmin(ModelView, model=Scene):
     name = "Scene"
     name_plural = "Scenes"
     icon = "fa-solid fa-clapperboard"
+    category = "Production"
 
 class OutlineAdmin(ModelView, model=OutlineItem):
     column_list = [OutlineItem.job_id, OutlineItem.chapter_index, OutlineItem.title, OutlineItem.type]
     name = "Outline Item"
     name_plural = "Outline Items"
     icon = "fa-solid fa-map-location-dot"
+    category = "Planning"
 
 class ImagePoolAdmin(ModelView, model=ImagePool):
     column_list = [ImagePool.image_tags, ImagePool.source_job_id, ImagePool.created_at]
-    name = "Global Image Pool"
-    name_plural = "Global Image Pool"
+    name = "Pool Image"
+    name_plural = "Image Pool"
     icon = "fa-solid fa-images"
+    category = "Assets"
 
 def setup_admin(app: FastAPI):
     """Initialize SQLAdmin with models."""
-    admin = Admin(app, engine, title="LuminaCast Admin")
+    admin = Admin(app, engine, title="LuminaCast Dashboard")
     admin.add_view(JobAdmin)
     admin.add_view(SceneAdmin)
     admin.add_view(OutlineAdmin)
