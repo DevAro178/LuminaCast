@@ -93,6 +93,7 @@ Avoid fluff—every sentence should hit emotionally
 No emojis, no hashtags
 Make it feel like a personal truth, not advice
 
+Target: Short-form video (30-60 seconds when spoken). Write 7-17 sentences.
 GOAL: The script should make the viewer feel deeply understood, slightly emotional, and want to rewatch or share.
 
 Respond ONLY with valid JSON in this exact format, no markdown:
