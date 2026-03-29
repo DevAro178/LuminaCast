@@ -55,9 +55,45 @@ Respond ONLY with valid JSON in this exact format, no markdown:
 }}"""
 
 SHORT_FORM_PROMPT = """Write a YouTube Shorts narration script about: "{topic}"
+TONE & STYLE:
 
-Target: Short-form video (30-60 seconds when spoken). Write 7-17 sentences.
-Structure: Shocking Hook → Quick Points → Punchline/CTA
+Deep, introspective, and relatable
+Second-person perspective (“you”)
+Calm but emotionally intense
+Simple language, no complex vocabulary
+Feels like you're reading the listener's mind
+
+STRUCTURE:
+
+HOOK (first 1-2 lines):
+Start with a thought-provoking or slightly controversial statement
+Make the viewer feel instantly understood or called out
+Example style: “Isn't it weird how…” / “You ever notice…” / “Nobody talks about how…”
+VALIDATION:
+Describe a feeling or behavior the audience experiences
+Show deep understanding of their internal struggle
+Use specific emotional details (e.g., “you overthink what you said,” “you feel drained around people”)
+REFRAME:
+Shift their perspective in a surprising or comforting way
+Reveal a truth that changes how they see themselves
+Example: “It's not that you're weak… it's that you've been carrying too much.”
+DEEP INSIGHT:
+Expand on the idea with emotional depth
+Use contrasts (e.g., “not because…, but because…”)
+Make it feel like a realization or awakening
+CLOSING LINE:
+End with a powerful, memorable statement
+Should feel freeing, validating, or eye-opening
+Keep it short and impactful
+
+WRITING TECHNIQUES:
+Use short paragraphs (1-2 lines max)
+Use repetition for emphasis (e.g., “It was never about…”)
+Avoid fluff—every sentence should hit emotionally
+No emojis, no hashtags
+Make it feel like a personal truth, not advice
+
+GOAL: The script should make the viewer feel deeply understood, slightly emotional, and want to rewatch or share.
 
 Respond ONLY with valid JSON in this exact format, no markdown:
 {{
@@ -65,8 +101,8 @@ Respond ONLY with valid JSON in this exact format, no markdown:
   "scenes": [
     {{
       "narration_text": "One grammatically correct sentence of narration for the captions.",
-      "image_prompt": "Comma-separated visual tags (Danbooru style).",
-      "negative_prompt": "Scene-specific things to exclude from the image."
+      "image_prompt": "Comma-separated visual tags (Danbooru style + high detailed description of what the scene looks like with high quality and exact pinpoint accuracy of visuals)",
+      "negative_prompt": "Scene-specific things to exclude from the image like multiple faces for single body, bad shape of limbs, bad anatomy .etc"
     }}
   ]
 }}"""
