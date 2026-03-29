@@ -71,6 +71,7 @@ TTS_VOICES = {
 
 # --- Transition / Animation ---
 CROSSFADE_DURATION = 0.3  # seconds
+SCENE_PAUSE = 0.25        # silence between scene audio clips
 KEN_BURNS_ZOOM = 1.08     # 8% zoom over scene duration
 
 # --- S3 Cloud Storage ---

@@ -15,7 +15,7 @@ from moviepy import (
 )
 import numpy as np
 
-from config import VIDEO_FPS, VIDEO_LONG_RESOLUTION, VIDEO_SHORT_RESOLUTION, CROSSFADE_DURATION, KEN_BURNS_ZOOM
+from config import VIDEO_FPS, VIDEO_LONG_RESOLUTION, VIDEO_SHORT_RESOLUTION, CROSSFADE_DURATION, KEN_BURNS_ZOOM, SCENE_PAUSE
 
 logger = logging.getLogger(__name__)
 
@@ -111,8 +111,7 @@ def assemble_video(
             logger.warning(f"Scene {i} has zero duration, skipping")
             continue
 
-        # Add a 0.5s pause after the audio ends, before the next scene starts
-        SCENE_PAUSE = 0.5
+        # Use SCENE_PAUSE from config for audio gap between scenes
 
         # Create image clip
         visual_duration = duration + SCENE_PAUSE + (CROSSFADE_DURATION if CROSSFADE_DURATION > 0 else 0)
