@@ -1,5 +1,5 @@
 """
-spinning-photon — FastAPI application
+LuminaCast — FastAPI application
 YouTube Video Automation SaaS
 """
 import asyncio
@@ -8,7 +8,7 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, BackgroundTasks, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,6 +22,7 @@ from pipeline.orchestrator import (
     run_legacy_pipeline,
     expand_outline_to_scenes
 )
+from admin_manager import setup_admin
 
 # Logging setup
 logging.basicConfig(
@@ -51,6 +52,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# Initialize SQLAdmin Dashboard
+setup_admin(app)
 
 app.add_middleware(
     CORSMiddleware,
@@ -338,16 +342,22 @@ async def download_video(job_id: str):
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    if job["status"] != "completed":
-        raise HTTPException(status_code=400, detail="Video not yet completed")
-
     output_path = job.get("output_path")
-    if not output_path or not Path(output_path).exists():
+    if not output_path:
         raise HTTPException(status_code=404, detail="Video file not found")
 
-    filename = f"spinning-photon-{job_id}.mp4"
+    # If S3 is enabled, output_path is a full URL (https://...)
+    if output_path.startswith("http"):
+        return RedirectResponse(output_path)
+
+    # Local file fallback
+    p = Path(output_path)
+    if not p.exists():
+        raise HTTPException(status_code=404, detail="Video file not found")
+
+    filename = f"lumina-cast-{job_id}.mp4"
     return FileResponse(
-        output_path,
+        str(p),
         media_type="video/mp4",
         filename=filename,
     )
