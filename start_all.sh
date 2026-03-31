@@ -78,6 +78,10 @@ if [ -d "$CHAT_NVME" ]; then
         mkdir -p "$CHAT_NVME/envs"
         python3.11 -m venv "$CHAT_VENV"
         source "$CHAT_VENV/bin/activate"
+        mkdir -p /opt/dlami/nvme/tmp
+        mkdir -p /opt/dlami/nvme/pip-cache
+        export TMPDIR=/opt/dlami/nvme/tmp
+        export PIP_CACHE_DIR=/opt/dlami/nvme/pip-cache
         pip install --upgrade pip
         pip install -r "$APP_DIR/chatterbox_requirements.txt"
     fi
