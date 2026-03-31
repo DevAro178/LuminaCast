@@ -143,11 +143,15 @@ def generate_captions_from_timestamps(
                 cumulative_time += duration
                 continue
             
-            avg_duration = duration / len(words)
+            effective_duration = duration * 0.90  # Exclude ~10% estimated trailing silence
+            total_weight = sum(len(w) + 1 for w in words)  # Add 1 as baseline pause weight per word
+            
             for j, word in enumerate(words):
-                chunk_duration = max(0.15, avg_duration)
+                weight = len(word) + 1
+                chunk_duration = (weight / total_weight) * effective_duration
+                
                 if j == len(words) - 1:
-                    chunk_duration += SCENE_PAUSE
+                    chunk_duration += (duration - effective_duration) + SCENE_PAUSE
 
                 start_str = _format_ass_time(cumulative_time)
                 end_time = cumulative_time + chunk_duration

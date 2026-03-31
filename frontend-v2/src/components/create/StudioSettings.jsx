@@ -43,7 +43,7 @@ export default function StudioSettings() {
     { value: 'zoom_out', label: 'Zoom Out' }
   ];
 
-  const currentEffect = effectIds.length > 0 ? effectIds[0] : 'ken_burns';
+  // Removed currentEffect declaration
 
   if (!isOpen) {
     return (
@@ -96,12 +96,31 @@ export default function StudioSettings() {
           />
         </div>
         <div className="col-span-2">
-          <label className="text-[10px] font-black tracking-widest uppercase text-textSecondary block mb-2">Camera Motion</label>
-          <Select 
-            value={currentEffect} 
-            onChange={(val) => setEffectIds([val])}
-            options={effectOptions}
-          />
+          <label className="text-[10px] font-black tracking-widest uppercase text-textSecondary block mb-2">Camera Motion (Multi-Select)</label>
+          <div className="flex flex-wrap gap-2">
+            {effectOptions.map(opt => {
+              const isActive = effectIds.includes(opt.value);
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => {
+                    if (isActive && effectIds.length > 1) {
+                      setEffectIds(effectIds.filter(id => id !== opt.value));
+                    } else if (!isActive) {
+                      setEffectIds([...effectIds, opt.value]);
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    isActive 
+                      ? 'bg-accent text-white' 
+                      : 'bg-white/5 text-textSecondary hover:bg-white/10'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 

@@ -495,12 +495,18 @@ async def regenerate_single_scene(job_id: str, scene_index: int, custom_tags: st
     
     try:
         logger.info(f"[{job_id}] Regenerating scene {scene_index}: {image_prompt[:60]}...")
+        
+        model_config = None
+        if job.get("sd_model_id"):
+            model_config = await db.get_sd_model(job["sd_model_id"])
+            
         from pipeline.image_generator import generate_image
         local_path = await generate_image(
             prompt=image_prompt,
             output_path=image_path,
             video_type=video_type,
             negative_prompt=negative_prompt,
+            sd_model_override=model_config
         )
         
         # Upload to S3 if enabled
