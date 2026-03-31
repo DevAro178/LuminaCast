@@ -107,6 +107,7 @@ def generate_captions_from_timestamps(
     tts_results: list[dict],
     output_path: str | Path,
     video_type: str = "long",
+    style: str = "chunked"
 ) -> str:
     """
     Generate ASS subtitle file with chunked captions and pop/fade transitions.
@@ -130,50 +131,71 @@ def generate_captions_from_timestamps(
     events = []
 
     cumulative_time = 0.0
+    SCENE_PAUSE = 0.5
 
     for i, (scene, tts) in enumerate(zip(scenes, tts_results)):
         text = scene["narration_text"]
         duration = tts["duration"]
 
-        # Split the narration into short chunks
-        chunks = _chunk_sentence(text)
+        if style == "word_pop":
+            words = text.split()
+            if not words:
+                cumulative_time += duration
+                continue
+            
+            avg_duration = duration / len(words)
+            for j, word in enumerate(words):
+                chunk_duration = max(0.15, avg_duration)
+                if j == len(words) - 1:
+                    chunk_duration += SCENE_PAUSE
 
-        if not chunks:
-            cumulative_time += duration
-            continue
+                start_str = _format_ass_time(cumulative_time)
+                end_time = cumulative_time + chunk_duration
+                end_str = _format_ass_time(end_time)
 
-        # Distribute time across chunks weighted by word count
-        total_words = sum(len(c.split()) for c in chunks)
-        if total_words == 0:
-            total_words = len(chunks)
+                clean_text = word.replace("\n", "")
+                events.append(
+                    f"Dialogue: 0,{start_str},{end_str},Default,,0,0,0,,{POP_FADE_TAG}{clean_text}"
+                )
+                cumulative_time = end_time
 
-        # 0.5s pause after the audio finishes before the next scene starts
-        SCENE_PAUSE = 0.5
+        else:
+            # Chunked style
+            chunks = _chunk_sentence(text)
 
-        for j, chunk in enumerate(chunks):
-            word_count = len(chunk.split())
-            chunk_duration = (word_count / total_words) * duration
-            # Ensure minimum duration of 0.4s for readability
-            chunk_duration = max(0.4, chunk_duration)
+            if not chunks:
+                cumulative_time += duration
+                continue
 
-            # If this is the last chunk of the sentence, keep it on screen 
-            # during the scene's trailing silence (SCENE_PAUSE).
-            if j == len(chunks) - 1:
-                chunk_duration += SCENE_PAUSE
+            # Distribute time across chunks weighted by word count
+            total_words = sum(len(c.split()) for c in chunks)
+            if total_words == 0:
+                total_words = len(chunks)
 
-            start_str = _format_ass_time(cumulative_time)
-            end_time = cumulative_time + chunk_duration
-            end_str = _format_ass_time(end_time)
+            for j, chunk in enumerate(chunks):
+                word_count = len(chunk.split())
+                chunk_duration = (word_count / total_words) * duration
+                # Ensure minimum duration of 0.4s for readability
+                chunk_duration = max(0.4, chunk_duration)
 
-            # Clean text for ASS format
-            clean_text = chunk.replace("\n", "\\N")
+                # If this is the last chunk of the sentence, keep it on screen 
+                # during the scene's trailing silence (SCENE_PAUSE).
+                if j == len(chunks) - 1:
+                    chunk_duration += SCENE_PAUSE
 
-            # Apply pop-in + fade animation tags
-            events.append(
-                f"Dialogue: 0,{start_str},{end_str},Default,,0,0,0,,{POP_FADE_TAG}{clean_text}"
-            )
+                start_str = _format_ass_time(cumulative_time)
+                end_time = cumulative_time + chunk_duration
+                end_str = _format_ass_time(end_time)
 
-            cumulative_time = end_time
+                # Clean text for ASS format
+                clean_text = chunk.replace("\n", "\\N")
+
+                # Apply pop-in + fade animation tags
+                events.append(
+                    f"Dialogue: 0,{start_str},{end_str},Default,,0,0,0,,{POP_FADE_TAG}{clean_text}"
+                )
+
+                cumulative_time = end_time
 
         # Sync cumulative time with actual TTS duration + pause to prevent drift
         expected_end = sum(t["duration"] + SCENE_PAUSE for t in tts_results[:i+1])

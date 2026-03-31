@@ -7,8 +7,9 @@ import logging
 import json
 import struct
 import wave
+import subprocess
 from pathlib import Path
-from config import KOKORO_TTS_URL, CHATTERBOX_TTS_URL, TTS_PROVIDER, TTS_VOICES
+from config import CHATTERBOX_TTS_URL, VOICES_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -16,15 +17,21 @@ logger = logging.getLogger(__name__)
 async def generate_speech(
     text: str,
     output_path: str | Path,
-    voice_type: str = "female",
+    voice_id: str = "adam",
+    exaggeration: float = 0.5,
+    cfg_weight: float = 0.5,
+    speed: float = 1.0
 ) -> dict:
     """
-    Generate speech audio for a text using Kokoro TTS.
+    Generate speech audio for a text using Chatterbox TTS.
 
     Args:
         text: Text to convert to speech
         output_path: Path to save the WAV file
-        voice_type: 'female' or 'male'
+        voice_id: Refers to filename in voices dir {voice_id}.wav
+        exaggeration: Chatterbox model param
+        cfg_weight: Chatterbox model param
+        speed: Speed multiplier to apply via ffmpeg
 
     Returns:
         dict with 'audio_path', 'duration', and 'timestamps' (word-level)
@@ -32,64 +39,60 @@ async def generate_speech(
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    voice_id = TTS_VOICES.get(voice_type, TTS_VOICES["female"])
+    api_url = f"{CHATTERBOX_TTS_URL}/api/generate"
+    voice_path = str(VOICES_DIR / f"{voice_id}.wav")
 
-    url_base = CHATTERBOX_TTS_URL if TTS_PROVIDER == "chatterbox" else KOKORO_TTS_URL
-    api_url = f"{url_base}/api/generate"
+    payload = {
+        "text": text,
+        "audio_prompt_path": voice_path,
+        "exaggeration": exaggeration,
+        "cfg_weight": cfg_weight
+    }
 
-    # Define request payload based on provider
-    if TTS_PROVIDER == "chatterbox":
-        payload = {
-            "text": text,
-            "voice": voice_type,
-            "exaggeration": 0.5,
-            "cfg_weight": 0.5
-        }
-    else:
-        payload = {
-            "text": text,
-            "voice": voice_id,
-            "speed": 0.81,
-            "response_format": "wav",
-        }
-
-    logger.info(f"Generating TTS ({TTS_PROVIDER}/{voice_type}): {text[:60]}...")
+    logger.info(f"Generating TTS for voice {voice_id}: {text[:60]}...")
 
     async with httpx.AsyncClient(timeout=120.0) as client:
         response = await client.post(api_url, json=payload)
+        if response.status_code == 400:
+            raise ValueError(f"Chatterbox error: {response.text}")
         response.raise_for_status()
 
-        # Check if the response is JSON (with timestamps) or raw audio
-        content_type = response.headers.get("content-type", "")
+        # Raw audio response expected from Chatterbox
+        output_path.write_bytes(response.content)
 
-        if "application/json" in content_type:
-            result = response.json()
-            # Save audio from base64 or URL
-            audio_data = result.get("audio", b"")
-            if isinstance(audio_data, str):
-                import base64
-                audio_data = base64.b64decode(audio_data)
-            output_path.write_bytes(audio_data)
-            timestamps = result.get("timestamps", [])
-            duration = result.get("duration", 0)
-        else:
-            # Raw audio response
-            output_path.write_bytes(response.content)
-            timestamps = []
-            duration = _get_wav_duration(output_path)
+    # Apply speed manipulation if specified
+    if speed != 1.0:
+        temp_path = output_path.with_name(f"{output_path.stem}_unscaled.wav")
+        output_path.rename(temp_path)
+        try:
+            cmd = [
+                "ffmpeg", "-y",
+                "-i", str(temp_path),
+                "-filter:a", f"atempo={speed}",
+                str(output_path)
+            ]
+            # Use run sync internally because we are inside async wrapper, but Popen is fast here
+            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        finally:
+            if temp_path.exists():
+                temp_path.unlink()
 
+    duration = _get_wav_duration(output_path)
     logger.info(f"Saved audio ({duration:.1f}s) to {output_path}")
     return {
         "audio_path": str(output_path),
         "duration": duration,
-        "timestamps": timestamps,
+        "timestamps": [],
     }
 
 
 async def generate_speech_for_scenes(
     scenes: list[dict],
     job_dir: str | Path,
-    voice_type: str = "female",
+    voice_id: str = "adam",
+    exaggeration: float = 0.5,
+    cfg_weight: float = 0.5,
+    speed: float = 1.0,
     on_progress: callable = None,
 ) -> list[dict]:
     """
@@ -98,7 +101,7 @@ async def generate_speech_for_scenes(
     Args:
         scenes: List of scene dicts with 'narration_text'
         job_dir: Directory to save audio files
-        voice_type: 'female' or 'male'
+        voice_id: 'adam', 'eve', etc
         on_progress: Optional callback(scene_index, total)
 
     Returns:
@@ -128,9 +131,12 @@ async def generate_speech_for_scenes(
             
         try:
             result = await generate_speech(
-                text=scene.get("narration_audio", scene["narration_text"]),
+                text=scene.get("narration_audio") or scene["narration_text"],
                 output_path=audio_path,
-                voice_type=voice_type,
+                voice_id=voice_id,
+                exaggeration=exaggeration,
+                cfg_weight=cfg_weight,
+                speed=speed
             )
             results.append(result)
         except Exception as e:

@@ -55,8 +55,7 @@ async def startup_event():
 
 class TTSRequest(BaseModel):
     text: str
-    voice: str = "default"
-    speed: float = 1.0  # Chatterbox uses cfg_weight and exaggeration instead of simple speed usually
+    audio_prompt_path: str
     exaggeration: float = 0.5
     cfg_weight: float = 0.5
 
@@ -66,14 +65,13 @@ async def generate_speech(req: TTSRequest):
         raise HTTPException(status_code=503, detail="Model not loaded yet")
     
     try:
-        # Generate audio
-        # Using the user's sample.wav if it exists for zero-shot cloning
-        audio_prompt = str(VOICE_SAMPLE) if VOICE_SAMPLE.exists() else None
-        
+        if not os.path.exists(req.audio_prompt_path):
+            raise HTTPException(status_code=400, detail=f"audio_prompt_path not found: {req.audio_prompt_path}")
+
         # Chatterbox .generate returns a tensor [1, T]
         wav = model.generate(
             text=req.text,
-            audio_prompt_path=audio_prompt,
+            audio_prompt_path=req.audio_prompt_path,
             exaggeration=req.exaggeration,
             cfg_weight=req.cfg_weight
         )

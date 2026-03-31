@@ -28,7 +28,14 @@ async def init_db():
                 completed_at TEXT,
                 output_path TEXT,
                 error_message TEXT,
-                user_script TEXT
+                user_script TEXT,
+                sd_model_id TEXT,
+                voice_id TEXT,
+                tts_exaggeration REAL DEFAULT 0.5,
+                tts_cfg_weight REAL DEFAULT 0.5,
+                tts_speed REAL DEFAULT 1.0,
+                effect_ids TEXT DEFAULT '["ken_burns"]',
+                caption_style TEXT DEFAULT 'chunked'
             )
         """)
         await db.execute("""
@@ -58,6 +65,20 @@ async def init_db():
             )
         """)
         await db.execute("""
+            CREATE TABLE IF NOT EXISTS sd_models (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                model_key TEXT NOT NULL,
+                sampler_name TEXT DEFAULT 'dpmpp_2m',
+                num_inference_steps INTEGER DEFAULT 40,
+                guidance_scale REAL DEFAULT 7.5,
+                vram_usage_level TEXT DEFAULT 'balanced',
+                clip_skip BOOLEAN DEFAULT 0,
+                is_default BOOLEAN DEFAULT 0,
+                created_at TEXT NOT NULL
+            )
+        """)
+        await db.execute("""
             CREATE TABLE IF NOT EXISTS outline (
                 id TEXT PRIMARY KEY,
                 job_id TEXT NOT NULL,
@@ -79,6 +100,13 @@ async def init_db():
             "ALTER TABLE scenes ADD COLUMN narration_audio TEXT",
             "ALTER TABLE scenes ADD COLUMN edited_audio TEXT",
             "ALTER TABLE jobs ADD COLUMN user_script TEXT",
+            "ALTER TABLE jobs ADD COLUMN sd_model_id TEXT",
+            "ALTER TABLE jobs ADD COLUMN voice_id TEXT",
+            "ALTER TABLE jobs ADD COLUMN tts_exaggeration REAL DEFAULT 0.5",
+            "ALTER TABLE jobs ADD COLUMN tts_cfg_weight REAL DEFAULT 0.5",
+            "ALTER TABLE jobs ADD COLUMN tts_speed REAL DEFAULT 1.0",
+            "ALTER TABLE jobs ADD COLUMN effect_ids TEXT DEFAULT '[\"ken_burns\"]'",
+            "ALTER TABLE jobs ADD COLUMN caption_style TEXT DEFAULT 'chunked'",
         ]
         
         for query in migration_queries:
@@ -93,15 +121,36 @@ async def init_db():
 
 # --- Job Operations ---
 
-async def create_job(topic: str, video_type: str, voice_type: str = "female", workflow_mode: str = "basic", user_script: str = None) -> dict:
+async def create_job(
+    topic: str, 
+    video_type: str, 
+    voice_type: str = "female", 
+    workflow_mode: str = "basic", 
+    user_script: str | None = None,
+    sd_model_id: str | None = None,
+    voice_id: str | None = None,
+    tts_exaggeration: float = 0.5,
+    tts_cfg_weight: float = 0.5,
+    tts_speed: float = 1.0,
+    effect_ids: str = '["ken_burns"]',
+    caption_style: str = "chunked"
+) -> dict:
     """Create a new job and return it."""
     job_id = str(uuid.uuid4())[:8]
     now = datetime.now(timezone.utc).isoformat()
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
-            """INSERT INTO jobs (id, topic, video_type, voice_type, workflow_mode, user_script, status, progress_pct, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, 'queued', 0, ?)""",
-            (job_id, topic, video_type, voice_type, workflow_mode, user_script, now)
+            """INSERT INTO jobs (
+                   id, topic, video_type, voice_type, workflow_mode, user_script, 
+                   status, progress_pct, created_at,
+                   sd_model_id, voice_id, tts_exaggeration, tts_cfg_weight, tts_speed, effect_ids, caption_style
+               )
+               VALUES (?, ?, ?, ?, ?, ?, 'queued', 0, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                job_id, topic, video_type, voice_type, workflow_mode, user_script, 
+                now,
+                sd_model_id, voice_id, tts_exaggeration, tts_cfg_weight, tts_speed, effect_ids, caption_style
+            )
         )
         await db.commit()
     return await get_job(job_id)
@@ -276,3 +325,78 @@ async def delete_outline_for_job(job_id: str):
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("DELETE FROM outline WHERE job_id = ?", (job_id,))
         await db.commit()
+
+
+# --- SD Model Operations ---
+
+async def get_sd_models() -> list[dict]:
+    """Get all configured SD models."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT * FROM sd_models ORDER BY name ASC") as cursor:
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
+
+async def get_sd_model(model_id: str) -> dict | None:
+    """Get a single SD model configuration."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT * FROM sd_models WHERE id = ?", (model_id,)) as cursor:
+            row = await cursor.fetchone()
+            return dict(row) if row else None
+
+async def create_sd_model(name: str, model_key: str, **kwargs) -> dict:
+    """Create a new SD model configuration."""
+    model_id = str(uuid.uuid4())[:12]
+    now = datetime.now(timezone.utc).isoformat()
+    
+    # Extract optional fields with defaults mapped to schema
+    sampler = kwargs.get("sampler_name", "dpmpp_2m")
+    steps = kwargs.get("num_inference_steps", 40)
+    guidance = kwargs.get("guidance_scale", 7.5)
+    vram = kwargs.get("vram_usage_level", "balanced")
+    clip_skip = 1 if kwargs.get("clip_skip", False) else 0
+    is_default = 1 if kwargs.get("is_default", False) else 0
+
+    async with aiosqlite.connect(DB_PATH) as db:
+        if is_default:
+            # Unset default on others
+            await db.execute("UPDATE sd_models SET is_default = 0")
+            
+        await db.execute(
+            """INSERT INTO sd_models (
+                   id, name, model_key, sampler_name, num_inference_steps, 
+                   guidance_scale, vram_usage_level, clip_skip, is_default, created_at
+               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (model_id, name, model_key, sampler, steps, guidance, vram, clip_skip, is_default, now)
+        )
+        await db.commit()
+    
+    # Return the created record by re-fetching
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT * FROM sd_models WHERE id = ?", (model_id,)) as cursor:
+            row = await cursor.fetchone()
+            return dict(row)
+
+async def update_sd_model(model_id: str, **kwargs):
+    """Update SD model configuration."""
+    if not kwargs:
+        return
+        
+    set_clause = ", ".join(f"{k} = ?" for k in kwargs)
+    values = list(kwargs.values()) + [model_id]
+    
+    async with aiosqlite.connect(DB_PATH) as db:
+        if kwargs.get("is_default", False):
+            await db.execute("UPDATE sd_models SET is_default = 0 WHERE id != ?", (model_id,))
+            
+        await db.execute(f"UPDATE sd_models SET {set_clause} WHERE id = ?", values)
+        await db.commit()
+
+async def delete_sd_model(model_id: str):
+    """Delete an SD model configuration."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("DELETE FROM sd_models WHERE id = ?", (model_id,))
+        await db.commit()
+

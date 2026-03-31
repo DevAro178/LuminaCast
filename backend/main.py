@@ -107,6 +107,13 @@ class GenerateV2Request(BaseModel):
     voice_type: str = Field("female", pattern="^(female|male)$", description="Voice type for narration")
     workflow_mode: str = Field("advanced", pattern="^(basic|advanced)$")
     user_script: str | None = Field(None, description="Optional custom script provided by the user")
+    sd_model_id: str | None = Field(None, description="Selected SD Model ID")
+    voice_id: str | None = Field(None, description="Selected Avatar Voice ID")
+    tts_exaggeration: float = Field(0.5, description="Chatterbox exaggeration")
+    tts_cfg_weight: float = Field(0.5, description="Chatterbox CFG weight")
+    tts_speed: float = Field(1.0, description="TTS Speed Multiplier")
+    effect_ids: str = Field('["ken_burns"]', description="JSON string array of FFmpeg/MoviePy effect IDs to apply")
+    caption_style: str = Field("chunked", description="Style of captions to overlay (chunked or word_pop)")
 
 
 # --- API Endpoints (V1 / Legacy) ---
@@ -143,7 +150,14 @@ async def create_job_v2(request: GenerateV2Request, background_tasks: Background
         video_type=request.video_type,
         voice_type=request.voice_type,
         workflow_mode=request.workflow_mode,
-        user_script=request.user_script
+        user_script=request.user_script,
+        sd_model_id=request.sd_model_id,
+        voice_id=request.voice_id,
+        tts_exaggeration=request.tts_exaggeration,
+        tts_cfg_weight=request.tts_cfg_weight,
+        tts_speed=request.tts_speed,
+        effect_ids=request.effect_ids,
+        caption_style=request.caption_style
     )
     
     if request.workflow_mode == "basic":
@@ -158,6 +172,24 @@ async def create_job_v2(request: GenerateV2Request, background_tasks: Background
     
     # Advanced mode returns immediately so the UI can sequence it
     return {"job_id": job["id"], "workflow_mode": job["workflow_mode"], "status": job["status"]}
+
+@app.get("/api/v2/sd_models")
+async def api_get_sd_models():
+    """Get all configured SD models."""
+    return await db.get_sd_models()
+
+@app.get("/api/v2/voices")
+async def api_get_voices():
+    """Get all available voice avatars."""
+    from config import VOICES_DIR
+    import os
+    voices = []
+    if VOICES_DIR.exists():
+        for f in os.listdir(VOICES_DIR):
+            if f.endswith(".wav"):
+                avatar = f.split(".")[0]
+                voices.append({"id": avatar, "name": avatar.title()})
+    return voices
 
 @app.post("/api/v2/jobs/{job_id}/draft_script")
 async def draft_job_script(job_id: str, background_tasks: BackgroundTasks):

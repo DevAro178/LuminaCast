@@ -66,6 +66,19 @@ class OutlineItem(Base):
 
     job = relationship("Job", back_populates="outline_items")
 
+class SdModel(Base):
+    __tablename__ = "sd_models"
+    id = Column(String, primary_key=True)
+    name = Column(String)
+    model_key = Column(String)
+    sampler_name = Column(String)
+    num_inference_steps = Column(Integer)
+    guidance_scale = Column(Float)
+    vram_usage_level = Column(String)
+    clip_skip = Column(Boolean)
+    is_default = Column(Boolean)
+    created_at = Column(String)
+
 class ImagePool(Base):
     __tablename__ = "image_pool"
     id = Column(String, primary_key=True)
@@ -100,6 +113,15 @@ class OutlineAdmin(ModelView, model=OutlineItem):
     icon = "fa-solid fa-map-location-dot"
     category = "Planning"
 
+class SDModelAdmin(ModelView, model=SdModel):
+    column_list = [SdModel.name, SdModel.model_key, SdModel.is_default, SdModel.created_at]
+    column_searchable_list = [SdModel.name, SdModel.model_key]
+    column_filters = [SdModel.is_default]
+    name = "SD Model"
+    name_plural = "SD Models"
+    icon = "fa-solid fa-cube"
+    category = "Assets"
+
 class ImagePoolAdmin(ModelView, model=ImagePool):
     column_list = [ImagePool.image_tags, ImagePool.source_job_id, ImagePool.created_at]
     name = "Pool Image"
@@ -113,5 +135,6 @@ def setup_admin(app: FastAPI):
     admin.add_view(JobAdmin)
     admin.add_view(SceneAdmin)
     admin.add_view(OutlineAdmin)
+    admin.add_view(SDModelAdmin)
     admin.add_view(ImagePoolAdmin)
     return admin

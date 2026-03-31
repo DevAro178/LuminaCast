@@ -18,8 +18,24 @@ const useStore = create((set, get) => ({
   videoType: 'short', // 'short', 'long'
   setVideoType: (type) => set({ videoType: type }),
   
-  voiceType: 'female', // 'male', 'female'
+  voiceType: 'female', // legacy, keeping for fallback
   setVoiceType: (type) => set({ voiceType: type }),
+
+  // Studio Settings
+  voiceId: 'adam',
+  setVoiceId: (id) => set({ voiceId: id }),
+  sdModelId: null,
+  setSdModelId: (id) => set({ sdModelId: id }),
+  ttsExaggeration: 0.5,
+  setTtsExaggeration: (v) => set({ ttsExaggeration: v }),
+  ttsCfgWeight: 0.5,
+  setTtsCfgWeight: (v) => set({ ttsCfgWeight: v }),
+  ttsSpeed: 1.0,
+  setTtsSpeed: (v) => set({ ttsSpeed: v }),
+  effectIds: ['ken_burns'],
+  setEffectIds: (ids) => set({ effectIds: ids }),
+  captionStyle: 'chunked',
+  setCaptionStyle: (style) => set({ captionStyle: style }),
 
   // Form State
   topicInput: '',
@@ -71,12 +87,23 @@ const useStore = create((set, get) => ({
     set({ isGenerating: true, progress: 0, status: 'queued', advancedStep: 'input', videoType: actualVideoType });
 
     try {
+      const advancedConfig = {
+        voice_id: get().voiceId,
+        sd_model_id: get().sdModelId,
+        tts_exaggeration: get().ttsExaggeration,
+        tts_cfg_weight: get().ttsCfgWeight,
+        tts_speed: get().ttsSpeed,
+        effect_ids: JSON.stringify(get().effectIds),
+        caption_style: get().captionStyle
+      };
+
       const { job_id } = await jobsApi.createJob(
         isCustomScript ? (userScript.slice(0, 100) + "...") : topicInput, 
         actualVideoType, 
         voiceType, 
         mode,
-        isCustomScript ? userScript : null
+        isCustomScript ? userScript : null,
+        advancedConfig
       );
       set({ currentJobId: job_id });
 

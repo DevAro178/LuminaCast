@@ -10,14 +10,25 @@ const api = axios.create({
 
 export const jobsApi = {
   // Initialize a new job
-  createJob: async (topic, videoType, voiceType, workflowMode, userScript = null) => {
+  createJob: async (topic, videoType, voiceType, workflowMode, userScript = null, advancedConfig = {}) => {
     const response = await api.post('/api/v2/jobs', {
       topic,
       video_type: videoType,
       voice_type: voiceType,
       workflow_mode: workflowMode,
       user_script: userScript,
+      ...advancedConfig
     });
+    return response.data;
+  },
+
+  getVoices: async () => {
+    const response = await api.get('/api/v2/voices');
+    return response.data;
+  },
+
+  getSdModels: async () => {
+    const response = await api.get('/api/v2/sd_models');
     return response.data;
   },
 

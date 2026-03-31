@@ -8,6 +8,7 @@ import OutlineReview from './OutlineReview';
 import ScriptReview from './ScriptReview';
 import VisualReview from './VisualReview';
 import AssemblyView from './AssemblyView';
+import StudioSettings from './StudioSettings';
 
 export default function ContentGrid() {
   const mode = useStore(state => state.mode);
@@ -104,14 +105,16 @@ export default function ContentGrid() {
                   ]}
                 />
               )}
-              <Select 
-                value={voiceType} 
-                onChange={setVoiceType}
-                options={[
-                  { value: 'female', label: 'Female Voice' },
-                  { value: 'male', label: 'Male Voice' }
-                ]}
-              />
+              {mode === 'basic' && (
+                <Select 
+                  value={voiceType} 
+                  onChange={setVoiceType}
+                  options={[
+                    { value: 'female', label: 'Female Voice' },
+                    { value: 'male', label: 'Male Voice' }
+                  ]}
+                />
+              )}
 
               <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/5">
                 <input 
@@ -147,6 +150,8 @@ export default function ContentGrid() {
                 />
               )}
               
+              {mode === 'advanced' && <StudioSettings />}
+
               <Button 
                 variant="primary"
                 onClick={startJob}

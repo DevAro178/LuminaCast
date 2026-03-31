@@ -15,10 +15,12 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
 JOBS_DIR = PROJECT_ROOT / "jobs"
+VOICES_DIR = PROJECT_ROOT / "voices"
 DB_PATH = PROJECT_ROOT / "lumina.db"
 
-# Ensure jobs directory exists
+# Ensure directories exist
 JOBS_DIR.mkdir(exist_ok=True)
+VOICES_DIR.mkdir(exist_ok=True)
 
 # --- Service URLs (all on same AWS instance) ---
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")

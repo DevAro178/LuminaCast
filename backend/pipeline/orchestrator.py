@@ -208,6 +208,10 @@ async def generate_job_visuals(job_id: str):
         })
 
     try:
+        sd_model = None
+        if job.get("sd_model_id"):
+            sd_model = await db.get_sd_model(job["sd_model_id"])
+            
         await db.update_job(job_id, status="generating_images", progress_pct=15)
         logger.info(f"[{job_id}] Step 2: Generating {len(scenes)} images (testing against smart pool)...")
 
@@ -283,6 +287,7 @@ async def generate_job_visuals(job_id: str):
                         output_path=image_path,
                         video_type=video_type,
                         negative_prompt=scene.get("negative_prompt", ""),
+                        sd_model_override=sd_model
                     )
                     image_paths.append(path)
                     # Add newly generated image to the global pool!
@@ -344,8 +349,15 @@ async def assemble_job_video(job_id: str):
                 status=f"Generating Narration: {completed}/{total}"
             )
 
+        voice_id = job.get("voice_id", "adam")
+        tts_exag = job.get("tts_exaggeration", 0.5)
+        tts_cfg = job.get("tts_cfg_weight", 0.5)
+        tts_speed = job.get("tts_speed", 1.0)
+
         tts_results = await generate_speech_for_scenes(
-            scenes, job_dir, voice_type, on_progress=on_tts_progress
+            scenes, job_dir, voice_id=voice_id, 
+            exaggeration=tts_exag, cfg_weight=tts_cfg, speed=tts_speed,
+            on_progress=on_tts_progress
         )
 
         # Update scene records with audio paths (S3 URLs if enabled) and durations
@@ -365,8 +377,9 @@ async def assemble_job_video(job_id: str):
         logger.info(f"[{job_id}] Step 3.2: Generating captions...")
 
         caption_path = job_dir / "captions.ass"
+        style = job.get("caption_style", "chunked")
         generate_captions_from_timestamps(
-            scenes, tts_results, caption_path, video_type
+            scenes, tts_results, caption_path, video_type, style=style
         )
 
         # ---- Step 3.3: Assemble Video ----
@@ -380,6 +393,11 @@ async def assemble_job_video(job_id: str):
         async def update_progress(p):
             await db.update_job(job_id, progress_pct=p)
 
+        try:
+            effects = json.loads(job.get("effect_ids", '["ken_burns"]'))
+        except (TypeError, json.JSONDecodeError):
+            effects = ["ken_burns"]
+
         await asyncio.to_thread(
             assemble_video,
             scenes=scenes,
@@ -388,6 +406,7 @@ async def assemble_job_video(job_id: str):
             caption_path=str(caption_path),
             output_path=output_path,
             video_type=video_type,
+            effect_ids=effects,
             progress_callback=lambda p: asyncio.run_coroutine_threadsafe(update_progress(p), main_loop)
         )
 

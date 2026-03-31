@@ -63,6 +63,7 @@ def assemble_video(
     caption_path: str | None,
     output_path: str | Path,
     video_type: str = "long",
+    effect_ids: list[str] = None,
     progress_callback: callable = None,
 ) -> str:
     """
@@ -122,8 +123,12 @@ def assemble_video(
             .with_duration(visual_duration)
         )
 
-        # Apply Ken Burns effect
-        img_clip = _ken_burns_effect(img_clip)
+        effects = effect_ids or ["ken_burns"]
+        import random
+        effect = random.choice(effects)
+
+        if effect == "ken_burns":
+            img_clip = _ken_burns_effect(img_clip)
 
         scene_clips.append(img_clip)
 

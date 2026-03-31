@@ -25,6 +25,7 @@ async def generate_image(
     video_type: str = "long",
     negative_prompt: str = "",
     session_id: str = "spinning-photon",
+    sd_model_override: dict = None,
 ) -> str:
     """
     Generate a single anime-style image via Easy Diffusion.
@@ -34,6 +35,7 @@ async def generate_image(
         output_path: Path to save the generated JPG
         video_type: 'long' (1920x1080) or 'short' (1080x1920)
         session_id: Easy Diffusion session ID
+        sd_model_override: Optional DB config containing model_key, sampler_name, etc.
 
     Returns:
         Path to the saved image file
@@ -55,9 +57,7 @@ async def generate_image(
     if negative_prompt:
         merged_negative = f"{merged_negative}, {negative_prompt}"
 
-    # Build request payload matching Easy Diffusion's expected format
-    # IMPORTANT: always use a random seed so regenerations produce different results.
-    # SD_DEFAULT_PARAMS contains seed=42 as a placeholder; we override it here.
+    # Build the base payload matching Easy Diffusion's expected format
     import random
     payload = {
         **SD_DEFAULT_PARAMS,
@@ -70,6 +70,19 @@ async def generate_image(
         "seed": random.randint(0, 2**32 - 1),  # fresh random seed every call
         "used_random_seed": True,
     }
+
+    # Apply database-driven model overrides if provided
+    if sd_model_override:
+        if "model_key" in sd_model_override:
+            payload["use_stable_diffusion_model"] = sd_model_override["model_key"]
+        
+        override_keys = [
+            "sampler_name", "num_inference_steps", "guidance_scale", 
+            "vram_usage_level", "clip_skip"
+        ]
+        for key in override_keys:
+            if key in sd_model_override and sd_model_override[key] is not None:
+                payload[key] = sd_model_override[key]
 
     logger.info(f"Generating image: {prompt[:80]}...")
 
