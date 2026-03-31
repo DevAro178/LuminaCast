@@ -43,11 +43,12 @@ async def generate_image(
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Set resolution based on video type
+    # Generate at AI-safe native resolutions to prevent structural UNet collapse.
+    # MoviePy will upscale them to the final 1080p target length during assembly.
     if video_type == "short":
-        width, height = VIDEO_SHORT_RESOLUTION
+        gen_width, gen_height = (640, 1152) 
     else:
-        width, height = VIDEO_LONG_RESOLUTION
+        gen_width, gen_height = (1152, 640)
 
     # Build the full prompt with anime style prefix
     full_prompt = f"{ANIME_STYLE_PREFIX}{prompt}"
@@ -64,8 +65,8 @@ async def generate_image(
         "prompt": full_prompt,
         "original_prompt": full_prompt,
         "negative_prompt": merged_negative,
-        "width": width,
-        "height": height,
+        "width": gen_width,
+        "height": gen_height,
         "session_id": session_id,
         "seed": random.randint(0, 2**32 - 1),  # fresh random seed every call
         "used_random_seed": True,
