@@ -35,7 +35,7 @@ class Job(Base):
     workflow_mode = Column(String)
     approved_script = Column(Boolean)
     approved_visuals = Column(Boolean)
-    created_at = Column(String)
+    created_at = Column(String, default=generate_timestamp)
     completed_at = Column(String)
     output_path = Column(String)
     error_message = Column(Text)
