@@ -99,7 +99,6 @@ class ImagePool(Base):
 class JobAdmin(ModelView, model=Job):
     column_list = [Job.id, Job.topic, Job.status, Job.progress_pct, Job.created_at]
     column_searchable_list = [Job.id, Job.topic]
-    column_filters = [Job.status, Job.workflow_mode]
     name = "Video Job"
     name_plural = "Video Jobs"
     icon = "fa-solid fa-list-check"
