@@ -3,6 +3,8 @@ Admin Manager — SQLAdmin integration for database management.
 """
 from fastapi import FastAPI
 from sqladmin import Admin, ModelView
+import uuid
+from datetime import datetime, timezone
 from sqlalchemy import create_engine, Column, String, Integer, Boolean, Float, ForeignKey, Text
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from config import DB_PATH
@@ -14,9 +16,15 @@ Base = declarative_base()
 engine = create_engine(f"sqlite:///{DB_PATH}", connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+def generate_id():
+    return str(uuid.uuid4())[:8]
+
+def generate_timestamp():
+    return datetime.now(timezone.utc).isoformat()
+
 class Job(Base):
     __tablename__ = "jobs"
-    id = Column(String, primary_key=True)
+    id = Column(String, primary_key=True, default=generate_id)
     topic = Column(String)
     video_type = Column(String)
     voice_type = Column(String)
@@ -46,7 +54,7 @@ class Job(Base):
 
 class Scene(Base):
     __tablename__ = "scenes"
-    id = Column(String, primary_key=True)
+    id = Column(String, primary_key=True, default=generate_id)
     job_id = Column(String, ForeignKey("jobs.id"))
     scene_index = Column(Integer)
     narration_text = Column(String)
@@ -63,7 +71,7 @@ class Scene(Base):
 
 class OutlineItem(Base):
     __tablename__ = "outline"
-    id = Column(String, primary_key=True)
+    id = Column(String, primary_key=True, default=generate_id)
     job_id = Column(String, ForeignKey("jobs.id"))
     chapter_index = Column(Integer)
     section_index = Column(Integer)
@@ -75,7 +83,7 @@ class OutlineItem(Base):
 
 class SdModel(Base):
     __tablename__ = "sd_models"
-    id = Column(String, primary_key=True)
+    id = Column(String, primary_key=True, default=generate_id)
     name = Column(String)
     model_key = Column(String)
     sampler_name = Column(String)
@@ -84,11 +92,11 @@ class SdModel(Base):
     vram_usage_level = Column(String)
     clip_skip = Column(Boolean)
     is_default = Column(Boolean)
-    created_at = Column(String)
+    created_at = Column(String, default=generate_timestamp)
 
 class ImagePool(Base):
     __tablename__ = "image_pool"
-    id = Column(String, primary_key=True)
+    id = Column(String, primary_key=True, default=generate_id)
     image_tags = Column(String)
     file_path = Column(String)
     source_job_id = Column(String)
