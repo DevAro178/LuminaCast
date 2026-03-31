@@ -123,7 +123,6 @@ class OutlineAdmin(ModelView, model=OutlineItem):
 class SDModelAdmin(ModelView, model=SdModel):
     column_list = [SdModel.name, SdModel.model_key, SdModel.is_default, SdModel.created_at]
     column_searchable_list = [SdModel.name, SdModel.model_key]
-    column_filters = [SdModel.is_default]
     name = "SD Model"
     name_plural = "SD Models"
     icon = "fa-solid fa-cube"
