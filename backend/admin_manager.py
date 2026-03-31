@@ -32,6 +32,13 @@ class Job(Base):
     output_path = Column(String)
     error_message = Column(Text)
     user_script = Column(Text)
+    sd_model_id = Column(String)
+    voice_id = Column(String)
+    tts_exaggeration = Column(Float)
+    tts_cfg_weight = Column(Float)
+    tts_speed = Column(Float)
+    effect_ids = Column(String)
+    caption_style = Column(String)
 
     # Relationships
     scenes = relationship("Scene", back_populates="job", cascade="all, delete-orphan")
