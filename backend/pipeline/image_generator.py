@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # Anime style prefix applied to all prompts for visual consistency
 ANIME_STYLE_PREFIX = (
     "anime art style, masterpiece, best quality, detailed illustration, "
-    "cinematic lighting, warm color palette, atmospheric, "
+    "cinematic lighting, atmospheric, "
     "meaningful composition, clean lines, studio quality, "
 )
 
