@@ -37,6 +37,7 @@ if [ -d "$BACKEND_NVME" ]; then
         echo "🚀 Creating primary Studio venv on NVMe..."
         mkdir -p "$BACKEND_NVME/envs"
         python3.11 -m venv "$VENV_PATH"
+        
     fi
     source "$VENV_PATH/bin/activate"
     echo "🔄 Syncing dependencies (Whisper, stable-ts, chatterbox)..."
