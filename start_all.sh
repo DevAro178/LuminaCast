@@ -27,15 +27,41 @@ if [ $? -ne 0 ]; then
 fi
 echo ""
 
-# 1. Start System Monitor (htop/top)
+# 1. Setup Python Virtual Environment (NVMe fallback)
+echo "📦 Initializing LuminaCast Studio Environment..."
+BACKEND_NVME="/opt/dlami/nvme"
+VENV_PATH="/opt/dlami/nvme/envs/chatterbox_venv"
+
+if [ -d "$BACKEND_NVME" ]; then
+    if [ ! -d "$VENV_PATH" ]; then
+        echo "🚀 Creating primary Studio venv on NVMe..."
+        mkdir -p "$BACKEND_NVME/envs"
+        python3.11 -m venv "$VENV_PATH"
+    fi
+    source "$VENV_PATH/bin/activate"
+    echo "🔄 Syncing dependencies (Whisper, stable-ts, chatterbox)..."
+    pip install --upgrade pip --quiet
+    pip install -r "$APP_DIR/backend/requirements.txt" --quiet
+    pip install -r "$APP_DIR/chatterbox_requirements.txt" --quiet
+else
+    echo "⚠️ Warning: NVMe not found. Using local venv."
+    VENV_PATH="$APP_DIR/venv"
+    if [ ! -d "$VENV_PATH" ]; then
+        python3 -m venv "$VENV_PATH"
+    fi
+    source "$VENV_PATH/bin/activate"
+    pip install -r "$APP_DIR/backend/requirements.txt" --quiet
+fi
+
+# 2. Start System Monitor (htop/top)
 echo "Starting monitor screen..."
 screen -dmS monitor top
 
-# 2. Start Ollama
+# 3. Start Ollama
 echo "Starting Ollama screen..."
 screen -dmS ollama bash -c "ollama run mistral"
 
-# 3. Start Easy Diffusion (Stable Diffusion)
+# 4. Start Easy Diffusion (Stable Diffusion)
 echo "Starting Easy Diffusion screen..."
 if [ -d "$SD_DIR" ]; then
     screen -dmS sd bash -c "cd $SD_DIR && ./start.sh"
@@ -43,56 +69,30 @@ else
     echo "Warning: Easy Diffusion directory not found at $SD_DIR"
 fi
 
-# 4. Start Kokoro TTS Server
-echo "Starting Kokoro TTS screen..."
-if [ -d "$APP_DIR" ]; then
-    screen -dmS kokoro bash -c "cd $APP_DIR && source /home/ubuntu/LuminaCast/backend/.venv/bin/activate && python kokoro_server.py"
-else
-    echo "Error: LuminaCast directory not found at $APP_DIR. Cannot start TTS."
-fi
+# 5. (Deprecated) Kokoro TTS 
+# We have migrated to Chatterbox for expressive voicing. 
 
-# 5. Start LuminaCast Web Server (FastAPI)
+# 6. Start LuminaCast Web Server (FastAPI)
 echo "Starting LuminaCast Web Server screen..."
-if [ -d "$APP_DIR/backend" ]; then
-    screen -dmS web bash -c "cd $APP_DIR/backend && source $VENV_PATH/bin/activate && python main.py"
-else
-    echo "Error: LuminaCast backend directory not found. Cannot start web server."
-fi
+screen -dmS web bash -c "cd $APP_DIR/backend && source $VENV_PATH/bin/activate && python main.py"
 
-# 6. Start LuminaCast Frontend (React)
+# 7. Start LuminaCast Frontend (React)
 echo "Starting LuminaCast Frontend screen..."
 if [ -d "$APP_DIR/frontend-v2" ]; then
     screen -dmS frontend bash -c "cd $APP_DIR/frontend-v2 && npm run dev"
-else
-    echo "Error: LuminaCast frontend directory not found. Cannot start frontend server."
 fi
 
-# 7. Start Chatterbox TTS Server (Expressive AI)
+# 8. Start Chatterbox TTS Server (Expressive AI)
 echo "Starting Chatterbox TTS screen..."
-CHAT_NVME="/opt/dlami/nvme"
-CHAT_VENV="$CHAT_NVME/envs/chatterbox_venv"
-
-if [ -d "$CHAT_NVME" ]; then
-    if [ ! -d "$CHAT_VENV" ]; then
-        echo "📦 Creating Chatterbox Python 3.11 venv on NVMe..."
-        mkdir -p "$CHAT_NVME/envs"
-        python3.11 -m venv "$CHAT_VENV"
-        source "$CHAT_VENV/bin/activate"
-        mkdir -p /opt/dlami/nvme/tmp
-        mkdir -p /opt/dlami/nvme/pip-cache
-        export TMPDIR=/opt/dlami/nvme/tmp
-        export PIP_CACHE_DIR=/opt/dlami/nvme/pip-cache
-        pip install --upgrade pip
-        pip install -r "$APP_DIR/chatterbox_requirements.txt"
-    fi
+if [ -d "$BACKEND_NVME" ]; then
     echo "Starting Chatterbox server on port 8881..."
-    screen -dmS chatterbox bash -c "cd $APP_DIR && source $CHAT_VENV/bin/activate && python chatterbox_server.py"
+    screen -dmS chatterbox bash -c "cd $APP_DIR && source $VENV_PATH/bin/activate && python chatterbox_server.py"
 else
-    echo "⚠️  Note: /opt/dlami/nvme not found. Skipping Chatterbox auto-start."
+    echo "⚠️  Note: NVMe not found. Skipping Chatterbox auto-start."
 fi
 
 echo ""
-echo "✅ All 6 screen sessions have been started!"
+echo "✅ All 5 screen sessions (Monitor, Ollama, SD, Web, Chatterbox) have been started!"
 echo ""
 echo "To view active screens, run:"
 echo "  screen -ls"
