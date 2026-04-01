@@ -61,6 +61,7 @@ async def init_db():
                 image_tags TEXT NOT NULL,
                 file_path TEXT NOT NULL,
                 source_job_id TEXT NOT NULL,
+                sd_model_id TEXT,
                 created_at TEXT NOT NULL
             )
         """)
@@ -253,23 +254,30 @@ async def delete_scenes_for_job(job_id: str):
 
 # --- Image Pool Operations ---
 
-async def add_to_image_pool(image_tags: str, file_path: str, source_job_id: str):
+async def add_to_image_pool(image_tags: str, file_path: str, source_job_id: str, sd_model_id: str | None = None):
     """Add a generated image to the global pool for future reuse."""
     pool_id = str(uuid.uuid4())[:12]
     now = datetime.now(timezone.utc).isoformat()
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
-            """INSERT INTO image_pool (id, image_tags, file_path, source_job_id, created_at)
-               VALUES (?, ?, ?, ?, ?)""",
-            (pool_id, image_tags, file_path, source_job_id, now)
+            """INSERT INTO image_pool (id, image_tags, file_path, source_job_id, sd_model_id, created_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (pool_id, image_tags, file_path, source_job_id, sd_model_id, now)
         )
         await db.commit()
 
-async def get_all_pool_images() -> list[dict]:
-    """Retrieve all images from the global pool for similarity matching."""
+async def get_pool_images(sd_model_id: str | None = None) -> list[dict]:
+    """Retrieve all images from the global pool for similarity matching, respecting model boundaries."""
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-        async with db.execute("SELECT * FROM image_pool ORDER BY created_at DESC") as cursor:
+        if sd_model_id:
+            query = "SELECT * FROM image_pool WHERE sd_model_id = ? OR sd_model_id IS NULL ORDER BY created_at DESC"
+            params = (sd_model_id,)
+        else:
+            query = "SELECT * FROM image_pool WHERE sd_model_id IS NULL ORDER BY created_at DESC"
+            params = ()
+            
+        async with db.execute(query, params) as cursor:
             rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 

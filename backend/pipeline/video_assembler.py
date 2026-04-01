@@ -56,6 +56,79 @@ def _ken_burns_effect(clip, zoom_factor=KEN_BURNS_ZOOM):
     return clip.transform(make_frame)
 
 
+def _pan_left_effect(clip, zoom_factor=1.08):
+    """Pan from right to left at a fixed zoom level."""
+    w, h = clip.size
+
+    def make_frame(get_frame, t):
+        progress = t / clip.duration if clip.duration > 0 else 0
+        frame = get_frame(t)
+        from PIL import Image
+        pil_img = Image.fromarray(frame)
+        
+        new_w = w / zoom_factor
+        new_h = h / zoom_factor
+        
+        # Start looking at the right side, slide to the left side
+        max_x_offset = w - new_w
+        x_offset = max_x_offset * (1.0 - progress)
+        y_offset = (h - new_h) / 2
+        
+        return np.array(
+            pil_img.crop((x_offset, y_offset, x_offset + new_w, y_offset + new_h))
+            .resize((w, h), Image.LANCZOS)
+        )
+    return clip.transform(make_frame)
+
+
+def _pan_right_effect(clip, zoom_factor=1.08):
+    """Pan from left to right at a fixed zoom level."""
+    w, h = clip.size
+
+    def make_frame(get_frame, t):
+        progress = t / clip.duration if clip.duration > 0 else 0
+        frame = get_frame(t)
+        from PIL import Image
+        pil_img = Image.fromarray(frame)
+        
+        new_w = w / zoom_factor
+        new_h = h / zoom_factor
+        
+        # Start looking at the left side, slide to the right side
+        max_x_offset = w - new_w
+        x_offset = max_x_offset * progress
+        y_offset = (h - new_h) / 2
+        
+        return np.array(
+            pil_img.crop((x_offset, y_offset, x_offset + new_w, y_offset + new_h))
+            .resize((w, h), Image.LANCZOS)
+        )
+    return clip.transform(make_frame)
+
+
+def _zoom_out_effect(clip, start_zoom=1.08):
+    """Start zoomed in and zoom out slowly to 1.0 (original)."""
+    w, h = clip.size
+
+    def make_frame(get_frame, t):
+        progress = t / clip.duration if clip.duration > 0 else 0
+        current_zoom = start_zoom - ((start_zoom - 1.0) * progress)
+        frame = get_frame(t)
+        from PIL import Image
+        pil_img = Image.fromarray(frame)
+        
+        new_w = w / current_zoom
+        new_h = h / current_zoom
+        x_offset = (w - new_w) / 2
+        y_offset = (h - new_h) / 2
+        
+        return np.array(
+            pil_img.crop((x_offset, y_offset, x_offset + new_w, y_offset + new_h))
+            .resize((w, h), Image.LANCZOS)
+        )
+    return clip.transform(make_frame)
+
+
 def assemble_video(
     scenes: list[dict],
     tts_results: list[dict],
@@ -129,6 +202,12 @@ def assemble_video(
 
         if effect == "ken_burns":
             img_clip = _ken_burns_effect(img_clip)
+        elif effect == "pan_left":
+            img_clip = _pan_left_effect(img_clip)
+        elif effect == "pan_right":
+            img_clip = _pan_right_effect(img_clip)
+        elif effect == "zoom_out":
+            img_clip = _zoom_out_effect(img_clip)
 
         scene_clips.append(img_clip)
 

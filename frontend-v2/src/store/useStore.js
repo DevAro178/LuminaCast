@@ -18,8 +18,6 @@ const useStore = create((set, get) => ({
   videoType: 'short', // 'short', 'long'
   setVideoType: (type) => set({ videoType: type }),
   
-  voiceType: 'female', // legacy, keeping for fallback
-  setVoiceType: (type) => set({ voiceType: type }),
 
   // Studio Settings
   voiceId: 'adam',
@@ -76,7 +74,7 @@ const useStore = create((set, get) => ({
   
   // Actions
   startJob: async () => {
-    const { topicInput, userScript, isCustomScript, videoType, voiceType, mode } = get();
+    const { topicInput, userScript, isCustomScript, videoType, mode } = get();
     if (isCustomScript && !userScript) return;
     if (!isCustomScript && !topicInput) return;
 
@@ -100,7 +98,6 @@ const useStore = create((set, get) => ({
       const { job_id } = await jobsApi.createJob(
         isCustomScript ? (userScript.slice(0, 100) + "...") : topicInput, 
         actualVideoType, 
-        voiceType, 
         mode,
         isCustomScript ? userScript : null,
         advancedConfig

@@ -16,6 +16,7 @@ export default function ContentGrid() {
   const setActiveTab = useStore(state => state.setActiveTab);
   
   const [recentJobs, setRecentJobs] = useState([]);
+  const [voices, setVoices] = useState([]);
 
   useEffect(() => {
     const fetchRecent = async () => {
@@ -26,13 +27,24 @@ export default function ContentGrid() {
         console.error(err);
       }
     };
+    const fetchVoices = async () => {
+      try {
+        const data = await jobsApi.getVoices();
+        setVoices(data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
     fetchRecent();
+    fetchVoices();
   }, []);
+
+  const voiceId = useStore(state => state.voiceId);
+  const setVoiceId = useStore(state => state.setVoiceId);
+  const voiceOptions = voices.map(v => ({ value: v.id, label: v.name }));
 
   const videoType = useStore(state => state.videoType);
   const setVideoType = useStore(state => state.setVideoType);
-  const voiceType = useStore(state => state.voiceType);
-  const setVoiceType = useStore(state => state.setVoiceType);
   
   const topicInput = useStore(state => state.topicInput);
   const setTopicInput = useStore(state => state.setTopicInput);
@@ -107,12 +119,9 @@ export default function ContentGrid() {
               )}
               {mode === 'basic' && (
                 <Select 
-                  value={voiceType} 
-                  onChange={setVoiceType}
-                  options={[
-                    { value: 'female', label: 'Female Voice' },
-                    { value: 'male', label: 'Male Voice' }
-                  ]}
+                  value={voiceId} 
+                  onChange={setVoiceId}
+                  options={voiceOptions.length > 0 ? voiceOptions : [{value: 'adam', label: 'Loading...'}]}
                 />
               )}
 

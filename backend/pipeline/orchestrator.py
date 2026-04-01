@@ -236,7 +236,7 @@ async def generate_job_visuals(job_id: str):
         
         image_paths = []
         total = len(scenes)
-        pool_images = await db.get_all_pool_images()
+        pool_images = await db.get_pool_images(job.get("sd_model_id"))
 
         # Helper function for CPU-bound SequenceMatcher
         def _find_best_match(target_prompt, pool_images, threshold):
@@ -291,7 +291,7 @@ async def generate_job_visuals(job_id: str):
                     )
                     image_paths.append(path)
                     # Add newly generated image to the global pool!
-                    await db.add_to_image_pool(target_prompt, path, job_id)
+                    await db.add_to_image_pool(target_prompt, path, job_id, job.get("sd_model_id"))
                 except Exception as e:
                     logger.error(f"[{job_id}] Failed to generate image for scene {i}: {e}")
                     path = _create_fallback_image(image_path, video_type)

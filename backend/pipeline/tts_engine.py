@@ -60,8 +60,30 @@ async def generate_speech(
         # Raw audio response expected from Chatterbox
         output_path.write_bytes(response.content)
 
-    # Apply speed manipulation if specified
-    if speed != 1.0:
+    # Autoregressive Pacing Normalization
+    raw_duration = _get_wav_duration(output_path)
+    word_count = len(text.split())
+    
+    # Prevent div/0 or over-correcting very short phrases (e.g. 1-3 words)
+    if raw_duration > 0.5 and word_count >= 4:
+        raw_wpm = (word_count / raw_duration) * 60
+        TARGET_WPM = 155.0
+        
+        # If it hallucinates extreme speeds (e.g. >190 or <120 WPM), correct it
+        if raw_wpm > 190 or raw_wpm < 120:
+            correction_factor = TARGET_WPM / raw_wpm
+            # Bound the max single-stretch to prevent extreme chipmunking/demonic voices
+            correction_factor = max(0.6, min(1.6, correction_factor))
+            
+            speed *= correction_factor
+            logger.info(f"TTS hallucinated abnormally at {raw_wpm:.0f} WPM. Normalizing with atempo={correction_factor:.2f}")
+
+    # Constrain final speed to valid atempo bounds to avoid FFmpeg crashing
+    speed = max(0.5, min(100.0, speed))
+
+    # Apply speed manipulation if specified or if normalized
+    # Floating point comparison safe up to 3 decimals
+    if abs(speed - 1.0) > 0.001:
         temp_path = output_path.with_name(f"{output_path.stem}_unscaled.wav")
         output_path.rename(temp_path)
         try:

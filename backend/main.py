@@ -80,7 +80,9 @@ class JobResponse(BaseModel):
     id: str
     topic: str
     video_type: str
-    voice_type: str
+    workflow_mode: str
+    voice_id: str | None
+    sd_model_id: str | None
     workflow_mode: str
     status: str
     progress_pct: int
@@ -104,7 +106,6 @@ class ScenesUpdateRequest(BaseModel):
 class GenerateV2Request(BaseModel):
     topic: str | None = Field(None, min_length=3, max_length=2000, description="Video topic or title")
     video_type: str = Field("short", pattern="^(long|short)$", description="'long' (5-10 min) or 'short' (30-60s)")
-    voice_type: str = Field("female", pattern="^(female|male)$", description="Voice type for narration")
     workflow_mode: str = Field("advanced", pattern="^(basic|advanced)$")
     user_script: str | None = Field(None, description="Optional custom script provided by the user")
     sd_model_id: str | None = Field(None, description="Selected SD Model ID")
@@ -148,7 +149,6 @@ async def create_job_v2(request: GenerateV2Request, background_tasks: Background
     job = await db.create_job(
         topic=request.topic or "Custom Script Video",
         video_type=request.video_type,
-        voice_type=request.voice_type,
         workflow_mode=request.workflow_mode,
         user_script=request.user_script,
         sd_model_id=request.sd_model_id,
@@ -167,7 +167,7 @@ async def create_job_v2(request: GenerateV2Request, background_tasks: Background
             job_id=job["id"],
             topic=request.topic,
             video_type=request.video_type,
-            voice_type=request.voice_type,
+            voice_type="female"  # Legacy fallback for V1 pipeline
         )
     
     # Advanced mode returns immediately so the UI can sequence it

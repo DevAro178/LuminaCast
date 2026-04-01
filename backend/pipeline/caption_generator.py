@@ -19,7 +19,7 @@ WrapStyle: 0
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,Montserrat,60,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,60,1
+Style: Default,Montserrat,68,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,60,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -35,7 +35,7 @@ WrapStyle: 0
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,Montserrat,68,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,4,2,5,30,30,500,1
+Style: Default,Montserrat,76,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,4,2,5,30,30,500,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -46,6 +46,18 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 # \t(0,80,...) = animate to 100% scale over 80ms (pop)
 # \fad(120,80) = 120ms fade-in, 80ms fade-out
 POP_FADE_TAG = r"{\fad(120,80)\fscx80\fscy80\t(0,80,\fscx100\fscy100)}"
+
+
+_whisper_model = None
+
+def _get_whisper_model():
+    global _whisper_model
+    if _whisper_model is None:
+        import stable_whisper
+        logger.info("Loading Stable Whisper 'tiny' model for forced alignment...")
+        # Load the smallest, fastest model. CPU inference takes <1 sec for a clip
+        _whisper_model = stable_whisper.load_model('tiny')
+    return _whisper_model
 
 
 def _format_ass_time(seconds: float) -> str:
@@ -138,6 +150,38 @@ def generate_captions_from_timestamps(
         duration = tts["duration"]
 
         if style == "word_pop":
+            try:
+                model = _get_whisper_model()
+                # run forced alignment
+                result = model.align(audio_path, text, language='en')
+                align_words = []
+                for segment in result.segments:
+                    for w in segment.words:
+                        align_words.append((w.word, w.start, w.end))
+                        
+                if align_words:
+                    for j, (w_text, w_start, w_end) in enumerate(align_words):
+                        if j == len(align_words) - 1:
+                            w_end = duration + SCENE_PAUSE
+                            
+                        start_str = _format_ass_time(cumulative_time + w_start)
+                        end_str = _format_ass_time(cumulative_time + w_end)
+                        
+                        clean_text = w_text.replace("\n", "").strip()
+                        if not clean_text:
+                            continue
+                            
+                        zoom_fx = "{\\t(0,150,\\fscx115\\fscy115)\\t(150,500,\\fscx100\\fscy100)}"
+                        events.append(
+                            f"Dialogue: 0,{start_str},{end_str},Default,,0,0,0,,{zoom_fx}{clean_text}"
+                        )
+                    cumulative_time += duration + SCENE_PAUSE
+                    continue # Successfully generated words for this scene
+                    
+            except Exception as e:
+                logger.warning(f"Whisper alignment failed: {e}. Falling back to heuristic timing.")
+
+            # Fallback naive timing division
             words = text.split()
             if not words:
                 cumulative_time += duration
